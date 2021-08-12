@@ -1,0 +1,7 @@
+name="SeqAudit"
+uuid="329a1d7f-a79a-43b8-8671-feb503123859"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
