@@ -10,7 +10,7 @@ function airtable_metadata(key=Airtable.Credential())
     records = []
     req = Airtable.get(key, "/v0/appyRaPsZ5RsY4A1h", "Master"; view="ALL_NO_EDIT", filterByFormula="NOT({Mgx_batch}='')")
     append!(records, req.records)
-    while haskey(req, :offset) && length(records) < 2200
+    while haskey(req, :offset)
         @info "Making another request"
         req = Airtable.get(key, "/v0/appyRaPsZ5RsY4A1h/", "Master"; view="ALL_NO_EDIT", filterByFormula="NOT({Mgx_batch}='')", offset=req.offset)
         append!(records, req.records)
