@@ -1,12 +1,17 @@
-function rename_map(file; replacements=[])
+function rename_map(file, fromcol=1, tocol=2; replacements=[])
     isfile(file) || throw(ArgumentError())
     rename = CSV.read(file, DataFrame)
-    rnmap = Dict(row[1] => row[2] for row in eachrow(rename))
+    rename_map(rename, fromcol, tocol; replacements)
+end
+
+function rename_map(df::AbstractDataFrame, fromcol=1, tocol=2; replacements=[])
+    rnmap = Dict(row[fromcol] => row[tocol] for row in eachrow(df))
     for r in replacements 
         rnmap = Dict(replace(key, r) => rnmap[key] for key in keys(rnmap))
     end
     return rnmap
 end
+
 
 function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=nothing)
     fs = String[]
@@ -19,7 +24,7 @@ function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=
         end
     else
         files = readdir(dir)
-        filter!(file-> isfile(file) && any(key-> occursin(key, file), ks), files)
+        filter!(file-> isfile(file) && any(key-> contains(file, key), ks), files)
         append!(fs, files)
     end
 

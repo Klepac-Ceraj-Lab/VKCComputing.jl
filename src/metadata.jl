@@ -22,7 +22,7 @@ function airtable_metadata(key=Airtable.Credential())
         append!(df, filter(p -> !(last(p) isa AbstractArray), record.fields), cols=:union)
     end
 
-    rename!(df, "SampleID"=>"sample", "TimePoint"=>"timepoint", "SubjectID"=>"subject")
+    rename!(df, "TimePoint"=>"timepoint", "SubjectID"=>"subject")
 
     transform!(df, "subject"   => ByRow(s-> parse(Int, s)) => "subject",
                    "timepoint" => ByRow(tp-> parse(Int, tp)) => "timepoint",

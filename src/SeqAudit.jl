@@ -1,7 +1,8 @@
 module SeqAudit
 
 export rename_map,
-       rename_files
+       rename_files,
+       airtable_metadata
 
 using CSV
 using DataFrames
