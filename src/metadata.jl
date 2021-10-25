@@ -18,7 +18,7 @@ function airtable_metadata(key=Airtable.Credential())
     end
 
     df = DataFrame()
-    for record in records
+    for record in records 
         append!(df, filter(p -> !(last(p) isa AbstractArray), record.fields), cols=:union)
     end
 
