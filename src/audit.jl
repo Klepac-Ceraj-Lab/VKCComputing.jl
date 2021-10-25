@@ -7,17 +7,10 @@ const analysispatterns = (
     kneaddata = ["_kneaddata_paired_1.fastq.gz", "_kneaddata_paired_2.fastq.gz"]
 )
 
-function _find_files(dir; recursive=true)
-    allfiles = Set(String[])
-    if recursive
-        for (root, d, files) in walkdir(dir)
-            union!(allfiles, files)
-        end
-    else
-        union!(allfiles, filter(f-> isfile(joinpath(dir, f)), readdir(dir)))
-    end
-    return allfiles
-end
+_find_files(dir; recursive=true) = Set(string.(basename.(filter(isfile, 
+                                                                collect(recursive ? walkpath(Path(dir)) : 
+                                                                                    readpath(Path(dir))
+                                                                )))))
 
 
 function find_raw(dir, ids; recursive=true)
@@ -26,7 +19,7 @@ function find_raw(dir, ids; recursive=true)
     for id in ids
         startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
-        if !all(p-> any(f-> occursin(p, f), allfiles), patterns)
+        if !all(p-> any(f-> contains(f, p), allfiles), patterns)
             @warn "At least one raw fastq missing for $id"
         end
     end
@@ -39,8 +32,8 @@ function find_analysis_files(dir, ids; recursive=true)
         startswith(id, "FE") && continue
         for tool in keys(analysispatterns)
             patterns = [Regex(string(id, raw"_S\d+", p)) for p in analysispatterns[tool]]
-            if !all(p-> any(f-> occursin(p, f), allfiles), patterns)
-                @warn "At least one $tool file missing for $id"
+            for p in patterns
+                any(f-> contains(f, p), allfiles) || @warn "$tool: `$p` file missing for `$id`"
             end
         end
     end

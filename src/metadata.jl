@@ -26,7 +26,7 @@ function airtable_metadata(key=Airtable.Credential())
 
     transform!(df, "subject"   => ByRow(s-> parse(Int, s)) => "subject",
                    "timepoint" => ByRow(tp-> parse(Int, tp)) => "timepoint",
-                   "Mgx_batch" => ByRow(b-> (!ismissing(b) && occursin(r"Batch (\d+)", b)) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Mgx_batch",
-                   "16S_batch" => ByRow(b-> (!ismissing(b) && occursin(r"Batch (\d+)", b)) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "16S_batch")
+                   "Mgx_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Mgx_batch",
+                   "16S_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "16S_batch")
     return select(df, Cols(:sample, :subject, :timepoint, :))
 end

@@ -19,7 +19,7 @@ function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=
     if recurse
         @info "Recusing into $dir"
         for (root, dirs, files) in walkdir(dir)
-            filter!(file-> any(key-> occursin(key, file), ks), files)
+            filter!(file-> any(key-> contains(file, key), ks), files)
             append!(fs, joinpath.(Ref(root), files))
         end
     else
@@ -30,7 +30,7 @@ function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=
 
     ks = collect(ks)
     for f in fs
-        idx = findfirst(key-> occursin(key, f), ks)
+        idx = findfirst(key-> contains(f, key), ks)
         newf = replace(f, ks[idx] => "$(rnmap[ks[idx]] * (isnothing(sep) ? "" : sep))")
         @info "Changing `$f` to `$newf`"
         dryrun || mv(f, newf;force)
@@ -41,7 +41,7 @@ function rename_list(infile, outfile, rnmap)
     rkeys = collect(keys(rnmap))
     open(outfile, "w") do io
         for line in eachline(infile)
-            idx = findfirst(k-> occursin(k, line), rkeys)
+            idx = findfirst(k-> contains(line, k), rkeys)
             if isnothing(idx)
                 @warn "No replacement found for `$line`"
                 continue
