@@ -31,9 +31,9 @@ function find_analysis_files(dir, ids; recursive=true)
     for id in ids
         startswith(id, "FE") && continue
         for tool in keys(analysispatterns)
-            patterns = [Regex(string(id, raw"_S\d+", p)) for p in analysispatterns[tool]]
-            for p in patterns
-                any(f-> contains(f, p), allfiles) || @warn "$tool: `$p` file missing for `$id`"
+            for pattern in analysispatterns[tool]
+                p = Regex(string(id, raw"_S\d+", pattern))
+                any(f-> contains(f, p), allfiles) || @warn "$tool: `$pattern` file missing for `$id`"
             end
         end
     end
