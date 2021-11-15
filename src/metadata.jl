@@ -25,7 +25,7 @@ function airtable_metadata(key=Airtable.Credential())
     rename!(df, "TimePoint"=>"timepoint", "SubjectID"=>"subject")
 
     transform!(df, "subject"   => ByRow(s-> parse(Int, s)) => "subject",
-                   "timepoint" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "timepoint",
+                   "timepoint" => ByRow(b-> !ismissing(b) ? parse(Int, b) : missing) => "timepoint",
                    "Mgx_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Mgx_batch",
                    "16S_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "16S_batch",
                    "Metabolomics_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Metabolomics_batch")

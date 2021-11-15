@@ -9,8 +9,8 @@ function parse_commandline()
     s = ArgParseSettings()
 
     @add_arg_table s begin
-        "analysis_folder"
-            help = "Folder containing analysis batches"
+        "sequence_folder"
+            help = "Folder containing raw sequencing files"
             required = true
         "--ids"
             help = """
@@ -79,7 +79,7 @@ function main()
 
     @debug ids
 
-    find_raw(args["analysis_folder"], ids)
+    find_raw(args["sequence_folder"], ids)
 end
 
 main()

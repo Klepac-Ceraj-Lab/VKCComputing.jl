@@ -27,14 +27,24 @@ end
 
 function find_analysis_files(dir, ids; recursive=true)
     allfiles = _find_files(dir; recursive)
-
+    allmissing = NamedTuple[]
     for id in ids
         startswith(id, "FE") && continue
+        missing_patterns = NamedTuple[]
         for tool in keys(analysispatterns)
             for pattern in analysispatterns[tool]
                 p = Regex(string(id, raw"_S\d+", pattern))
-                any(f-> contains(f, p), allfiles) || @warn "$tool: `$pattern` file missing for `$id`"
+                any(f-> contains(f, p), allfiles) || push!(missing_patterns, (;tool, pattern, id))
             end
         end
+        
+        if !isempty(missing_patterns)
+            @warn "Analysis file(s) missing for `$id`"
+            append!(allmissing, missing_patterns)
+            for pattern in missing_patterns
+                @info "    missing $(pattern.tool) file: $(pattern.pattern) for id: $(pattern.id)"
+            end
+        end
+
     end
 end
