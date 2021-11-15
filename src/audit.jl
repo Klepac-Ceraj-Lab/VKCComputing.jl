@@ -45,6 +45,6 @@ function find_analysis_files(dir, ids; recursive=true)
                 @info "    missing $(pattern.tool) file: $(pattern.pattern) for id: $(pattern.id)"
             end
         end
-
     end
+    return allmissing
 end

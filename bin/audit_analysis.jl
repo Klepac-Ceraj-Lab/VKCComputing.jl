@@ -4,6 +4,7 @@ using LoggingExtras
 
 using SeqAudit
 using DataFrames
+using CSV
 
 function parse_commandline()
     s = ArgParseSettings()
@@ -19,6 +20,8 @@ function parse_commandline()
                    """
         "--metadata"
             help = "Table containing airtable_metadata"
+        "--table"
+            help = "Output a table containing info about missing files"
         "--verbose", "-v"
             help = "Set logging level to INFO"
             action = :store_true
@@ -80,7 +83,8 @@ function main()
 
     @debug ids
 
-    find_analysis_files(args["analysis_folder"], ids)
+    afs = find_analysis_files(args["analysis_folder"], ids)
+    !isnothing(args["table"]) && CSV.write(normpath(expanduser(args["table"])), afs)
 end
 
 main()
