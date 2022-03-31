@@ -14,15 +14,20 @@ _find_files(dir; recursive=true) = Set(string.(basename.(filter(isfile,
 
 
 function find_raw(dir, ids; recursive=true)
-    allfiles = _find_files(dir; recursive)
+    # pbar = ProgressBar(; N = length(ids), description="Missing raw fastqs")
 
-    for id in ids
+    notfound=0
+    for id in track(ids)
         startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
-        if !all(p-> any(f-> contains(f, p), allfiles), patterns)
-            @warn "At least one raw fastq missing for $id"
-        end
+        
+        
+        notfound += count(p-> any(f-> contains(f, p), allfiles), patterns)
     end
+
+    expected = length(rawfastq_patterns) * length(ids)
+    return (; expected, notfound)
+
 end
 
 function find_analysis_files(dir, ids; recursive=true)

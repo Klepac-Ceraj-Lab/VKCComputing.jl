@@ -1,3 +1,14 @@
+const keep_meta = [
+    :sample,
+    :subject,
+    :timepoint,
+    :ECHOTPCoded,
+    :Mother_Child,
+    :MaternalID,
+    :DOC,
+]
+
+
 """
     airtable_metadata(key=ENV["AIRTABLE_KEY"])
 Get fecal sample metadata table from airtable.
@@ -7,27 +18,33 @@ but published sample metadata is available from OSF.io
 using `datadep"sample metadata"`.
 """
 function airtable_metadata(key=Airtable.Credential())
-    records = []
-    req = Airtable.get(key, "/v0/appyRaPsZ5RsY4A1h", "Master"; view="ALL_NO_EDIT", filterByFormula="NOT({subjectID}='')")
-    append!(records, req.records)
-    while haskey(req, :offset)
-        @debug "Making another request of airtable API"
-        req = Airtable.get(key, "/v0/appyRaPsZ5RsY4A1h/", "Master"; view="ALL_NO_EDIT", filterByFormula="NOT({subjectID}='')", offset=req.offset)
-        append!(records, req.records)
-        sleep(0.250)
-    end
+    base = AirBase("appSWOVVdqAi5aT5u")
+    stab = AirTable("Samples", base)
+    ptab = AirTable("Project", base)
+    mgxtab = AirTable("MGX Batches", base)
+    metabtab = AirTable("Metabolomics Batches", base)
+
+    samples = Airtable.query(stab)
+    projects = Airtable.query(ptab)
+    mgxbatches = Airtable.query(mgxtab)
+    metabbatches = Airtable.query(metabtab)
 
     df = DataFrame()
-    for record in records 
-        append!(df, filter(p -> !(last(p) isa AbstractArray), record.fields), cols=:union)
+    for sample in samples
+        mgx = get(sample, Symbol("MGX Batches"), [])
+        metab = get(sample, Symbol("Metabolomics Batches"), [])
+
+        record = Pair{Symbol, Any}[k => get(sample, k, missing) for k in keep_meta]
+        
+        push!(record, :Mgx_batch => isempty(mgx) ? missing :
+            mgxbatches[findfirst(==(first(mgx)), Airtable.id.(mgxbatches))][:Name]
+        )
+
+        push!(record, :Metabolomics_batch => isempty(metab) ? missing :
+            metabbatches[findfirst(==(first(metab)), Airtable.id.(metabbatches))][:Name]
+        )
+
+        push!(df, NamedTuple(record), cols=:union)
     end
-
-    rename!(df, "TimePoint"=>"timepoint", "SubjectID"=>"subject")
-
-    transform!(df, "subject"   => ByRow(s-> parse(Int, s)) => "subject",
-                   "timepoint" => ByRow(b-> !ismissing(b) ? parse(Int, b) : missing) => "timepoint",
-                   "Mgx_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Mgx_batch",
-                   "16S_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "16S_batch",
-                   "Metabolomics_batch" => ByRow(b-> (!ismissing(b) && contains(b, r"Batch (\d+)")) ? parse(Int, match(r"Batch (\d+)", b).captures[1]) : missing) => "Metabolomics_batch")
-    return select(df, Cols(:sample, :subject, :timepoint, :))
+    return df
 end

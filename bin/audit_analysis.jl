@@ -6,6 +6,9 @@ using SeqAudit
 using DataFrames
 using CSV
 
+# import Term: Panel
+# import Term.progress: track, ProgressBar, update, start, stop
+
 function parse_commandline()
     s = ArgParseSettings()
 
