@@ -9,6 +9,7 @@ export rename_map,
 using CSV
 using DataFrames
 using Airtable
+using JSON3
 using FilePaths
 using FilePathsBase: /
 

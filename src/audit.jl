@@ -53,3 +53,29 @@ function find_analysis_files(dir, ids; recursive=true)
     end
     return allmissing
 end
+
+function summarize(log; print_samples=false)
+    samples = String[]
+    filedict = Dict(string(tool) => Dict(pat=> 0 for pat in analysispatterns[tool]) for tool in keys(analysispatterns))
+    for line in eachline(log)
+        if contains(line, "Analysis file(s) missing")
+            m = match(r"missing for `(\w+)`", line)
+            push!(samples, m.captures[1])
+        elseif contains(line, r"missing \w+ file:")
+            m = match(r"missing (\w+) file: ([\w\.]+) for id", line)
+            tool = m.captures[1]
+            pat = m.captures[2]
+            filedict[tool][pat] += 1
+        end 
+    end
+
+    @info "Missing file(s) for $(length(samples)) samples"
+    @info "Missing detail:"
+    JSON3.pretty(filedict)
+    if print_samples
+        open("samples.txt", "w") do io
+            println.(Ref(io), samples)
+        end
+    end
+    return nothing
+end
