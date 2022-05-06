@@ -12,6 +12,31 @@ _find_files(dir; recursive=true) = Set(string.(basename.(filter(isfile,
                                                                                     readpath(Path(dir))
                                                                 )))))
 
+function _files_to_tab(dir; recursive=true)
+    nts = Iterators.map(recursive ? walkpath(Path(dir)) : readpath(Path(dir))) do fp
+        dir = dirname(fp)
+        "links" in dir.segments && return missing
+
+        filename = basename(fp)
+        pats = match(r"([a-zA-Z0-9]+)_(S\d+)_([^.]+)\.(.+)", filename)
+        isnothing(pats) && return missing
+        
+        sample = pats.captures[1]
+        well = pats.captures[2]
+        filetype = pats.captures[3]
+        ext = pats.captures[4]
+
+        if count(==('.'), ext) > 1 && endswith(ext, ".fastq.gz")
+            filetype *= "." * replace(ext, ".fastq.gz" => "")
+            ext = "fastq.gz"
+        end
+
+        return (; sample, well, filename, dir, filetype, ext)
+    end
+
+    return DataFrame([row for row in nts if !ismissing(row)])
+end
+
 
 function find_raw(dir, ids; recursive=true)
     # pbar = ProgressBar(; N = length(ids), description="Missing raw fastqs")
@@ -20,7 +45,6 @@ function find_raw(dir, ids; recursive=true)
     for id in track(ids)
         startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
-        
         
         notfound += count(p-> any(f-> contains(f, p), allfiles), patterns)
     end
@@ -71,11 +95,19 @@ function summarize(log; print_samples=false)
 
     @info "Missing file(s) for $(length(samples)) samples"
     @info "Missing detail:"
-    JSON3.pretty(filedict)
+    print(Term.tree.Tree(filedict))
     if print_samples
         open("samples.txt", "w") do io
             println.(Ref(io), samples)
         end
     end
     return nothing
+end
+
+function airtable_audit(ids=nothing)
+    base = AirBase("appSWOVVdqAi5aT5u")
+    stab = AirTable("Samples", base)
+    ptab = AirTable("Project", base)
+    mgxtab = AirTable("MGX Batches", base)
+    metabtab = AirTable("Metabolomics Batches", base)
 end

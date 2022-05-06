@@ -5,6 +5,7 @@ using LoggingExtras
 using SeqAudit
 using DataFrames
 using CSV
+using Term
 
 # import Term: Panel
 # import Term.progress: track, ProgressBar, update, start, stop
@@ -21,8 +22,6 @@ function parse_commandline()
                    File containing a list of sequence ids (one per line).
                    If not provided, script will attempt to check everything in airtable.
                    """
-        "--metadata"
-            help = "Table containing airtable_metadata"
         "--table"
             help = "Output a table containing info about missing files"
         "--verbose", "-v"
