@@ -14,6 +14,7 @@ using FilePaths
 using FilePathsBase: /
 using Preferences
 using Term
+using Term.progress
 
 include("preferences.jl")
 include("renaming.jl")
