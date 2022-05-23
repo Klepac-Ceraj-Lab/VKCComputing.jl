@@ -6,8 +6,7 @@ base = AirBase("appSWOVVdqAi5aT5u")
 stab = AirTable("Samples", base)
 ptab = AirTable("Project", base)
 mgxtab = AirTable("MGX Batches", base)
-metabtab = AirTable("Metabolomics Batches", base)
-ftab = AirTable("Files", base)
+
 
 recs = Airtable.query(stab; filterByFormula="{Project} = 'ECHO'")
 
