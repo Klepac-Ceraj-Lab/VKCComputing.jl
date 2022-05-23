@@ -88,3 +88,23 @@ Once the reorganization is done,
 Run batches 15 and 16 under the new paradigm,
 use the process to test out new script functionality
 (primarily on `hopper` and / or `engaging` to avoid conflicts)
+
+## Structure proposal
+
+```
+Drive (eg `/lovelace`)
+├── Sequencing
+│  ├── metagenomes
+│  ├── amplicon
+│  │   ├── its
+│  │   ├── V4V5
+│  │   ├── V6V8
+├── Project 1  (echo)
+│  │   └── Project_metadata.toml # metadata about files, not samples
+
+...
+
+```
+
+- README.md
+- batchXXX.txt

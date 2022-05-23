@@ -1,7 +1,7 @@
 const rawfastq_patterns = ["L00$(ln)_R$(rn)_001.fastq.gz" for ln in 1:4 for rn in 1:2]
 
 const analysispatterns = (
-    metaphlan = ["_profile.tsv", "_bowtie2.tsv", ".sam"],
+    metaphlan = ["_profile.tsv"],
     humann = ["_genefamilies.tsv", "_pathcoverage.tsv", "_pathabundance.tsv"],
     kneaddata = ["_kneaddata_paired_1.fastq.gz", "_kneaddata_paired_2.fastq.gz"]
 )
