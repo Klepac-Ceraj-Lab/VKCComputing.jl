@@ -3,3 +3,4 @@ Manifest.toml
 *.cache
 scratch.*
 LocalPreferences.toml
+.vscode
