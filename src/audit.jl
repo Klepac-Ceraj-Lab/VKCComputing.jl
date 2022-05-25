@@ -35,17 +35,19 @@ end
 
 function find_raw(dir, ids; recursive=true)
     # pbar = ProgressBar(; N = length(ids), description="Missing raw fastqs")
-
+    allfiles = Iterators.filter(p-> endswith(basename(p), "fastq.gz"), walkpath(PosixPath(dir))) |> collect
+    missing_some = String[]
     notfound=0
-    for id in track(ids)
+    for id in ids
         startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
-        
-        notfound += count(p-> any(f-> contains(f, p), allfiles), patterns)
+        nf = count(p-> !any(f-> contains(basename(f), p), allfiles), patterns)
+        nf > 0 && push!(missing_some, id)
+        notfound += nf
     end
 
     expected = length(rawfastq_patterns) * length(ids)
-    return (; expected, notfound)
+    return (; expected, notfound, missing_some)
 
 end
 
