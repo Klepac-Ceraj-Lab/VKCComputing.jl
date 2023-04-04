@@ -1,14 +1,3 @@
-const keep_meta = [
-    :sample,
-    :subject,
-    :timepoint,
-    :ECHOTPCoded,
-    :Mother_Child,
-    :MaternalID,
-    :DOC,
-]
-
-
 """
     airtable_metadata(key=ENV["AIRTABLE_KEY"])
 Get fecal sample metadata table from airtable.

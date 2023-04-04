@@ -5,7 +5,6 @@ using LoggingExtras
 using SeqAudit
 using DataFrames
 using CSV
-using Term
 
 # import Term: Panel
 # import Term.progress: track, ProgressBar, update, start, stop
@@ -55,7 +54,6 @@ function set_logs!(args)
         if args["quiet"]
             global_logger(MiniLogger(minlevel=term_logger.minlevel, io=args["log"]))
         else
-            @warn term_logger.minlevel
             global_logger(TeeLogger(
                     term_logger,
                     MiniLogger(minlevel=term_logger.minlevel, io=args["log"])
