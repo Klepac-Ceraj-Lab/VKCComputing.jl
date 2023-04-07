@@ -1,5 +1,8 @@
 module VKCDataCLI
 
+using VKCComputing
+using Comonicon
+
 export set_logs!
 
 """
