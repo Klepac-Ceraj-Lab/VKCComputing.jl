@@ -30,19 +30,16 @@ Audit raw sequencing files
 """
 @main function audit_raw(sequence_folder; ids = nothing, log = nothing, verbose::Bool = false, quiet::Bool = false, debug::Bool = false)
     set_logs!(; log, verbose, quiet, debug)
-    @warn sequence_folder
-    @info ids
-    @debug "a debug message"
 
-    # if isnothing(get(args, "ids", nothing))
-    #     meta = airtable_metadata()
-    #     subset!(meta, :Mgx_batch=>ByRow(!ismissing))
-    #     ids = meta.sample
-    # else
-    #     ids = readlines(args["ids"])
-    # end
+    if isnothing(ids)
+        meta = airtable_metadata()
+        subset!(meta, :Mgx_batch=>ByRow(!ismissing))
+        ids = meta.sample
+    else
+        ids = readlines(ids)
+    end
 
-    # @debug ids
+    @debug ids
 
-    # find_raw(args["sequence_folder"], ids)
+    find_raw(sequence_folder, ids)
 end

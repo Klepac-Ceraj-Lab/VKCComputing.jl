@@ -1,14 +1,9 @@
 """
-    set_logs!(args)
+    set_logs!([; log, verbose, quiet, debug])
 
 The default log-level for scripts is `Warn`,
 and has only printing to the console.
 Use command-line arguments to set different behavior.
-
-
-## Arguments
-
-The `args` argument should be a dictionary containing keys:
 
 - `"debug"`: Bool - whether to set minimm log level to `Debug`.
 - `"verbose"`: Bool - whether to set the minimum log level to `Info`.
@@ -31,7 +26,6 @@ function set_logs!(; log = nothing, verbose = false, quiet = false, debug = fals
         if quiet
             global_logger(MiniLogger(minlevel=term_logger.minlevel, io=log))
         else
-            @warn term_logger.minlevel
             global_logger(TeeLogger(
                     term_logger,
                     MiniLogger(minlevel=term_logger.minlevel, io=log)

@@ -34,17 +34,17 @@ end
 
 
 function find_raw(dir, ids; recursive=true)
-    # pbar = ProgressBar(; N = length(ids), description="Missing raw fastqs")
-
     notfound=0
-    for id in track(ids)
+    allfiles = readdir(dir; join=true)
+    for id in ids
         startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
         
-        notfound += count(p-> any(f-> contains(f, p), allfiles), patterns)
+        notfound += count(p-> !any(f-> contains(basename(f), p), allfiles), patterns)
     end
 
     expected = length(rawfastq_patterns) * length(ids)
+    @debug expected notfound
     return (; expected, notfound)
 
 end
