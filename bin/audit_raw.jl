@@ -1,56 +1,48 @@
-using ArgParse
+#!/usr/bin/env julia
+
 using MiniLoggers
 using LoggingExtras
 
 using VKCComputing
-using VKCComputingCLI
+using Comonicon
 using DataFrames
 
-function parse_commandline()
-    s = ArgParseSettings()
 
-    @add_arg_table s begin
-        "sequence_folder"
-            help = "Folder containing raw sequencing files"
-            required = true
-        "--ids"
-            help = """
-                   File containing a list of sequence ids (one per line).
-                   If not provided, script will attempt to check everything in airtable.
-                   """
 
-        "--verbose", "-v"
-            help = "Set logging level to INFO"
-            action = :store_true
-        "--quiet", "-q"
-            help = "Silences logs sent to the terminal."
-            action = :store_true
-        "--debug"
-            help = "Set logging level to DEBUG. Over-rides --verbose"
-            action = :store_true
-        "--log", "-l"
-            help = "Log to file. May be used in combination with --quiet to log ONLY to file"
-    end
+"""
+Audit raw sequencing files
 
-    return parse_args(s)
+# Args
+
+- `sequence_folder`: Folder containing raw sequencing files
+
+# Flags
+
+- `-v, --verbose`: Set logging level to INFO
+- `-q, --quiet`: Silences logs sent to the terminal.
+- `--debug`: Set logging level to DEBUG. Over-rides --verbose
+
+# Options
+
+- `--ids`: File containing a list of sequence ids (one per line). If not provided, script will attempt to check everything in airtable.
+- `-l, --log`: Log to file. May be used in combination with --quiet to log ONLY to file
+
+"""
+@main function audit_raw(sequence_folder; ids = nothing, log = nothing, verbose::Bool = false, quiet::Bool = false, debug::Bool = false)
+    set_logs!(; log, verbose, quiet, debug)
+    @warn sequence_folder
+    @info ids
+    @debug "a debug message"
+
+    # if isnothing(get(args, "ids", nothing))
+    #     meta = airtable_metadata()
+    #     subset!(meta, :Mgx_batch=>ByRow(!ismissing))
+    #     ids = meta.sample
+    # else
+    #     ids = readlines(args["ids"])
+    # end
+
+    # @debug ids
+
+    # find_raw(args["sequence_folder"], ids)
 end
-
-
-function main()
-    args = parse_commandline()
-    set_logs!(args)
-    
-    if isnothing(get(args, "ids", nothing))
-        meta = airtable_metadata()
-        subset!(meta, :Mgx_batch=>ByRow(!ismissing))
-        ids = meta.sample
-    else
-        ids = readlines(args["ids"])
-    end
-
-    @debug ids
-
-    find_raw(args["sequence_folder"], ids)
-end
-
-main()

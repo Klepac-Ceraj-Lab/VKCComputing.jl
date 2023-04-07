@@ -1,10 +1,3 @@
-module VKCDataCLI
-
-using VKCComputing
-using Comonicon
-
-export set_logs!
-
 """
     set_logs!(args)
 
@@ -25,33 +18,31 @@ The `args` argument should be a dictionary containing keys:
     For example, one can set `--verbose --quiet --log script.log` to write all `Info`+
     logs to a file, with no terminal output.
 """
-function set_logs!(args)
-    if args["debug"]
+function set_logs!(; log = nothing, verbose = false, quiet = false, debug = false)
+    if debug
         term_logger = MiniLogger(minlevel=MiniLoggers.Debug)
-    elseif args["verbose"]
+    elseif verbose
         term_logger = MiniLogger(minlevel=MiniLoggers.Info)
     else
         term_logger = MiniLogger(minlevel=MiniLoggers.Warn)
     end
 
-    if !isnothing(args["log"])
-        if args["quiet"]
-            global_logger(MiniLogger(minlevel=term_logger.minlevel, io=args["log"]))
+    if !isnothing(log)
+        if quiet
+            global_logger(MiniLogger(minlevel=term_logger.minlevel, io=log))
         else
             @warn term_logger.minlevel
             global_logger(TeeLogger(
                     term_logger,
-                    MiniLogger(minlevel=term_logger.minlevel, io=args["log"])
+                    MiniLogger(minlevel=term_logger.minlevel, io=log)
                     )
             )
         end
     else
-        if args["quiet"]
+        if quiet
             global_logger(MiniLogger(MiniLoggers.Error))
         else
             global_logger(term_logger)
         end
     end 
 end
-
-end #module

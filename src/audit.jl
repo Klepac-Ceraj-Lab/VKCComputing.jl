@@ -71,7 +71,7 @@ function find_analysis_files(dir, sids=nothing; recursive=true)
 
     sgroup = groupby(allfiles, :sample)
 
-    @track for sid in sids
+    @progress for sid in sids
         if !haskey(sgroup, (; sample=sid))
             push!(stats, (; sample=sid, status = :notfound, metaphlan=String[], humann=String[], kneaddata=String[]))
         else
