@@ -1,6 +1,6 @@
-module ResonanceTests
+module VKCComputingTests
 
-using SeqAudit
+using VKCComputing
 using ReTest
  
 

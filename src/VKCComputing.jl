@@ -1,4 +1,4 @@
-module SeqAudit
+module VKCComputing
 
 export rename_map,
        rename_files,

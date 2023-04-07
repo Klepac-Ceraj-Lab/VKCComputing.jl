@@ -1,5 +1,5 @@
-include("SeqAuditTests.jl")
-SeqAuditTests.runtests()
+include("VKCComputingTests.jl")
+VKCComputingTests.runtests()
 
-using SeqAudit
-SeqAudit.runtests()
+using VKCComputing
+VKCComputing.runtests()

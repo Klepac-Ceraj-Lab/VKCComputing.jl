@@ -2,7 +2,8 @@ using ArgParse
 using MiniLoggers
 using LoggingExtras
 
-using SeqAudit
+using VKCComputing
+using VKCComputingCLI
 using DataFrames
 
 function parse_commandline()
@@ -34,36 +35,6 @@ function parse_commandline()
     return parse_args(s)
 end
 
-
-
-function set_logs!(args)
-    if args["debug"]
-        term_logger = MiniLogger(minlevel=MiniLoggers.Debug)
-    elseif args["verbose"]
-        term_logger = MiniLogger(minlevel=MiniLoggers.Info)
-    else
-        term_logger = MiniLogger(minlevel=MiniLoggers.Warn)
-    end
-
-    if !isnothing(args["log"])
-        if args["quiet"]
-            global_logger(MiniLogger(minlevel=term_logger.minlevel, io=args["log"]))
-        else
-            @warn term_logger.minlevel
-            global_logger(TeeLogger(
-                    term_logger,
-                    MiniLogger(minlevel=term_logger.minlevel, io=args["log"])
-                    )
-            )
-        end
-    else
-        if args["quiet"]
-            global_logger(MiniLogger(MiniLoggers.Error))
-        else
-            global_logger(term_logger)
-        end
-    end 
-end
 
 function main()
     args = parse_commandline()
