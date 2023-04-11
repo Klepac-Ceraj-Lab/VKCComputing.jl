@@ -13,28 +13,28 @@ Use command-line arguments to set different behavior.
     For example, one can set `--verbose --quiet --log script.log` to write all `Info`+
     logs to a file, with no terminal output.
 """
-function set_logs!(; log = nothing, verbose = false, quiet = false, debug = false)
+function set_logs!(; log = nothing, verbose = false, quiet = false, debug = false, message_mode=:markdown, kwargs...)
     if debug
-        term_logger = MiniLogger(minlevel=MiniLoggers.Debug)
+        term_logger = MiniLogger(; minlevel=MiniLoggers.Debug, message_mode, kwargs...)
     elseif verbose
-        term_logger = MiniLogger(minlevel=MiniLoggers.Info)
+        term_logger = MiniLogger(; minlevel=MiniLoggers.Info, message_mode, kwargs...)
     else
-        term_logger = MiniLogger(minlevel=MiniLoggers.Warn)
+        term_logger = MiniLogger(; minlevel=MiniLoggers.Warn, message_mode, kwargs...)
     end
 
     if !isnothing(log)
         if quiet
-            global_logger(MiniLogger(minlevel=term_logger.minlevel, io=log))
+            global_logger(MiniLogger(; minlevel=term_logger.minlevel, io=log, message_mode, kwargs...))
         else
             global_logger(TeeLogger(
                     term_logger,
-                    MiniLogger(minlevel=term_logger.minlevel, io=log)
+                    MiniLogger(; minlevel=term_logger.minlevel, io=log, message_mode, kwargs...)
                     )
             )
         end
     else
         if quiet
-            global_logger(MiniLogger(MiniLoggers.Error))
+            global_logger(MiniLogger(; minlevel = MiniLoggers.Error, message_mode, kwargs...))
         else
             global_logger(term_logger)
         end

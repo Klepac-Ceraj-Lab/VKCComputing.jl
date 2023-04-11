@@ -1,5 +1,10 @@
 module VKCComputing
 
+export VCKAirtableTable,
+       vkctable,
+       update_airtable_metadata!
+       
+
 export rename_map,
        rename_files,
        airtable_metadata,
@@ -9,9 +14,12 @@ export rename_map,
 
 using CSV
 using DataFrames
+using JSON3
 using Chain
 using Airtable
 using Preferences
+using Dates
+using TimeZones
 
 using ProgressLogging
 using MiniLoggers
