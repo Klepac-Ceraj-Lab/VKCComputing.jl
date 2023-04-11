@@ -11,6 +11,8 @@ function set_mgx_analysis_dir!()
     end
 end
 
+set_mgx_analysis_dir!(dir) = @set_preferences!("mgx_analysis_dir"=> dir)
+
 function set_mgx_raw_dir!()
     host = readchomp(`hostname`)
     if host == "vkclab-hopper"
@@ -23,3 +25,5 @@ function set_mgx_raw_dir!()
         throw(ArgumentError("Host not recognized: $host"))
     end
 end
+
+set_mgx_raw_dir!(dir) = @set_preferences!("mgx_raw_dir"=> dir)
