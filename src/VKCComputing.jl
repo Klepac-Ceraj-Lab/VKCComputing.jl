@@ -2,6 +2,7 @@ module VKCComputing
 
 export VCKAirtableTable,
        vkctable,
+       tabular_metadata,
        update_airtable_metadata!
        
 
