@@ -91,8 +91,10 @@ function update_airtable_metadata!(tab::VKCAirtable; force=false, interval = Mon
     if _should_update(tab.localpath; force, interval)
         @info "Table $(tab.name) needs updating, writing to `$(tab.localpath)`"
         JSON3.write(tab.localpath, Airtable.query(tab))
+        return true
     else
         @info "Table $(tab.name) does not need updating updating. Use `force` or shorten `interval` to override"
+        return false
     end
 end
 
@@ -104,20 +106,32 @@ end
 Airtable.query(tab::VKCAirtable) = Airtable.query(Airtable.Credential(), tab)
 
 function _flatten_airtable_records(records)
-    DataFrame(map(records) do record
+    reduce((x,y)-> vcat(x, y; cols=:union), ThreadsX.map(records) do record
         fields = record.fields
-        (; first(keys(fields)) => first(values(fields)),
+        DataFrame([(;
+            first(keys(fields)) => first(values(fields)),
             :airtable_id => record.id,
             :table_id => record.table.id,
             :base_id => record.table.base.id,
             fields...
-        )
+        )])
     end)
 end
 
-function tabular_metadata(tab::VKCAirtable; force=false, interval = Month(1))
-    update_airtable_metadata!(tab; force, interval)
-    return _tabular(tab)
+_parse_code_string(record) = eval(Meta.parse(record))
+
+function tabular_metadata(tab::VKCAirtable; force=false, interval = Month(1), additional_columns=[])
+    localtable = joinpath(dirname(tab.localpath), replace(basename(tab.localpath), ".json"=> ".csv"))
+    localtable == tab.localpath && throw(ErrorException("Table path and json path are identical, aborting!"))
+    if update_airtable_metadata!(tab; force, interval) || !isfile(localtable)
+        @info "Airtable metadata was re-downloaded or table files was missing, so re-building table"
+        tabular = _tabular(tab)
+        CSV.write(localtable, tabular)
+    else
+        tabular=CSV.read(localtable, DataFrame; rows_to_check=5000)
+
+    end
+    return tabular
 end
 
 _tabular(::Val{T}) where T = throw(ArgumentError("No tabular output for $(String(T)) defined"))
@@ -126,7 +140,7 @@ _tabular(tab::VKCAirtable) = _tabular(Val(Symbol(replace(tab.name, " "=>"_"))), 
 function _tabular(::Val{:MGX_Batches}, localpath)
     records = _flatten_airtable_records(open(JSON3.read, localpath))
     records."Date Shipped" = Date.(records."Date Shipped")
-    return records
+    return sort(records, :Name)
 end
 
 function _tabular(::Val{:Project}, localpath)
