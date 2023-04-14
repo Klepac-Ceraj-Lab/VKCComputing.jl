@@ -1,6 +1,8 @@
 
 """
-    VKCAirTable(base, name, localpath)
+    VKCAirtable(base, name, localpath)
+
+Connecting Airtable tables with 
 """
 struct VKCAirtable
     base::AirBase
@@ -33,39 +35,6 @@ _gen_table(::Val{:MGX_Batches}) = VKCAirtable(
     joinpath(@load_preference("airtable_dir"), "airtable_mgxbatches.json")
 )
 
-
-"""
-    airtable_metadata(key=ENV["AIRTABLE_KEY"])
-
-Get fecal sample metadata table from airtable.
-The API `key` comes from https://airtable.com/account.
-This is unlikely to work if you're not in the VKC lab.
-"""
-function airtable_metadata(key=Airtable.Credential())
-    samples      = airtable_table(key, "Samples")
-    projects     = airtable_table(key, "Project")
-    mgxbatches   = airtable_table(key, "MGX Batches")
-    metabbatches = airtable_table(key, "Metabolomics Batches")
-
-    df = DataFrame()
-    for sample in samples
-        mgx = get(sample, Symbol("MGX Batches"), [])
-        metab = get(sample, Symbol("Metabolomics Batches"), [])
-
-        record = Pair{Symbol, Any}[k => get(sample, k, missing) for k in keep_meta]
-        
-        push!(record, :Mgx_batch => isempty(mgx) ? missing :
-            mgxbatches[findfirst(==(first(mgx)), Airtable.id.(mgxbatches))][:Name]
-        )
-
-        push!(record, :Metabolomics_batch => isempty(metab) ? missing :
-            metabbatches[findfirst(==(first(metab)), Airtable.id.(metabbatches))][:Name]
-        )
-
-        push!(df, NamedTuple(record), cols=:union)
-    end
-    return df
-end
 
 function _should_update(file; force = false, interval = Month(1))
     modtime = astimezone(ZonedDateTime(Dates.unix2datetime(mtime(file)), tz"UTC"), localzone())
@@ -104,6 +73,15 @@ function Airtable.query(key, tab::VKCAirtable)
 end
 
 Airtable.query(tab::VKCAirtable) = Airtable.query(Airtable.Credential(), tab)
+
+function nested_metadata(tab::VKCAirtable; force=false, interval = Month(1))
+    localfile = tab.localpath
+    update_airtable_metadata!(tab; force, interval) || !isfile(localtable)
+    @info "Loading records from local JSON file"
+    return open(JSON3.read, localfile)
+end
+
+nested_metadata(tab::String; force=false, interval = Month(1)) = nested_metadata(vkctable(tab); force, interval)
 
 function _flatten_airtable_records(records)
     reduce((x,y)-> vcat(x, y; cols=:union), ThreadsX.map(records) do record

@@ -1,7 +1,9 @@
 module VKCComputing
 
-export VCKAirtableTable,
+# Airtable interfase
+export VCKAirtable,
        vkctable,
+       nested_metadata,
        tabular_metadata,
        update_airtable_metadata!
        
