@@ -1,5 +1,14 @@
-function load_raw_metaphlan()
-    df = DataFrame(file = filter(f-> contains(f, r"FG\d+_S\d+_profile"), readdir(analysisfiles("metaphlan"), join=true)))
+function load_raw_metaphlan(project::String; update_metadata=false)
+    if update_metadata
+        @info "Updating local copies of metadata files"
+        force = true
+    else
+        @info "Using local copies of metadata files"
+        force = false
+    end
+
+    project = nested_metadata(project; force)
+
     df.sample = map(s-> replace(s, "_profile.tsv"=> ""), basename.(df.file))
     df.sample_base = map(s-> replace(s, r"_S\d+"=>""), df.sample)
 

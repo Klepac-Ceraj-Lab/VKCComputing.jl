@@ -10,6 +10,7 @@ export VCKAirtable,
 
 export rename_map,
        rename_files,
+       filepicker,
        airtable_metadata,
        find_raw,
        find_analysis_files,
@@ -25,15 +26,20 @@ using Preferences
 using Dates
 using TimeZones
 
+using REPL
 using ProgressLogging
 using MiniLoggers
 using LoggingExtras
 
 
-include("cli.jl")
 include("preferences.jl")
-include("renaming.jl")
-include("audit.jl")
 include("metadata.jl")
+include("dataAPI.jl")
+
+include("files.jl")
+
+include("cli.jl")
+include("audit.jl")
+include("renaming.jl")
 
 end # module
