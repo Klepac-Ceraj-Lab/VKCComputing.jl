@@ -10,7 +10,6 @@ export VCKAirtable,
 
 export rename_map,
        rename_files,
-       filepicker,
        airtable_metadata,
        find_raw,
        find_analysis_files,
@@ -27,6 +26,8 @@ using Dates
 using TimeZones
 
 using REPL
+using QuickMenus
+import QuickMenus: RadioMenu
 using ProgressLogging
 using MiniLoggers
 using LoggingExtras

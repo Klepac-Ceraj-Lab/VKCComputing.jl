@@ -40,3 +40,35 @@ function set_logs!(; log = nothing, verbose = false, quiet = false, debug = fals
         end
     end 
 end
+
+_bool_menu(message) =  quickmenu((_, i) -> getindex([true, false], i), RadioMenu, ["yes", "no"]; message)
+
+_pref_check(pref) = _bool_menu("'$pref' is currently set to '$(@load_preference(pref))'. Is that correct?")
+
+_pref_set!(pref) = _bool_menu("Do you want to set the value of '$pref'") && _pref_set!(pref, filepicker("./"))
+
+function _pref_set!(pref, value)
+    if _bool_menu("Set '$pref' to '$value'?")
+        @set_preferences!(pref=> value)
+        return true
+    else
+        if _pref_set(pref)
+            resp = filepicker()
+            return _pref_set!(pref, resp)
+        else
+            return false
+        end
+    end
+end
+
+function update_preferences!()
+    prefs2check = (
+        "airtable_dir",
+        "mgx_analysis_dir",
+        "mgx_raw_dir"
+    )
+
+    for pref in prefs2check
+        (@has_preference(pref) && _pref_check(pref)) || _pref_set!(pref)
+    end 
+end
