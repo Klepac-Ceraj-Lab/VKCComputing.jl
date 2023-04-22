@@ -5,8 +5,14 @@ export VCKAirtable,
        vkctable,
        nested_metadata,
        tabular_metadata,
-       update_airtable_metadata!
-       
+       update_airtable_metadata!,
+       mgx_tool_files
+
+# Data API
+export Metadata,
+       Readcounts,
+       TaxonomicProfiles,
+       FunctionalProfiles       
 
 export rename_map,
        rename_files,

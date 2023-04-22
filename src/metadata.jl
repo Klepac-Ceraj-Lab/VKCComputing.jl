@@ -101,7 +101,7 @@ Airtable.query(tab::VKCAirtable) = Airtable.query(Airtable.Credential(), tab)
 """
 function nested_metadata(tab::VKCAirtable; force=false, interval = Month(1))
     localfile = tab.localpath
-    update_local_metadata!(tab; force, interval) || !isfile(localtable)
+    update_local_metadata!(tab; force, interval) || !isfile(localfile)
     @info "Loading records from local JSON file"
     return open(JSON3.read, localfile)
 end
