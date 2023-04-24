@@ -1,8 +1,5 @@
 #!/usr/bin/env julia
 
-using MiniLoggers
-using LoggingExtras
-
 using VKCComputing
 using Comonicon
 using DataFrames
