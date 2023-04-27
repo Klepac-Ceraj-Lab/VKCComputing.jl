@@ -18,3 +18,6 @@ QuickMenus = "2230646a-bae9-43e2-a071-fff97e6a4342"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 ThreadsX = "ac1d9e8a-700a-412c-b207-f0111f4b6c0d"
 TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
+
+[compat]
+QuickMenus = "v0.1.1"

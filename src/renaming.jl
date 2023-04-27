@@ -23,7 +23,7 @@ function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=
             append!(fs, joinpath.(Ref(root), files))
         end
     else
-        files = readdir(dir)
+        files = readdir(dir, join=true)
         filter!(file-> isfile(file) && any(key-> contains(file, key), ks), files)
         append!(fs, files)
     end
@@ -33,7 +33,7 @@ function rename_files(dir, rnmap; dryrun=false, recurse=false, force=false, sep=
         idx = findfirst(key-> contains(f, key), ks)
         newf = replace(f, ks[idx] => "$(rnmap[ks[idx]] * (isnothing(sep) ? "" : sep))")
         @info "Changing `$f` to `$newf`"
-        dryrun || mv(f, newf;force)
+        dryrun || mv(f, newf; force)
     end
 end
 

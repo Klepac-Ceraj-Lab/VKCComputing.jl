@@ -43,6 +43,12 @@ _gen_table(::Val{:MGX_Batches}) = VKCAirtable(
     joinpath(@load_preference("airtable_dir"), "airtable_mgxbatches.json")
 )
 
+_gen_table(::Val{:Amplicon_Batches}) = VKCAirtable(
+    AirBase("appSWOVVdqAi5aT5u"),
+    "Amplicon Batches",
+    joinpath(@load_preference("airtable_dir"), "airtable_ampliconbatches.json")
+)
+
 
 function _should_update(file; force = false, interval = Month(1))
     modtime = astimezone(ZonedDateTime(Dates.unix2datetime(mtime(file)), tz"UTC"), localzone())

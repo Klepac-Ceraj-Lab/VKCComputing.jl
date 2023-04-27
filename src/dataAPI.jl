@@ -5,7 +5,7 @@ struct ReadCounts <: AbstractDataset end
 struct TaxonomicProfiles <: AbstractDataset end
 struct FunctionalProfiles <: AbstractDataset end
 
-load(ds::AbstractDataset, args...; kwargs...) = throw(MethodError("load has not been implemented for $(typeof(ds))"))
+load(ds::AbstractDataset, args...; kwargs...) = throw(ArgumentError("load has not been implemented for $(typeof(ds))"))
 
 _get_samples(p::String; kwargs...) = _get_samples(Val(Symbol(p)); kwargs...)
 
