@@ -37,7 +37,6 @@ function find_raw(dir, ids; recursive=true)
     notfound=0
     allfiles = readdir(dir; join=true)
     for id in ids
-        startswith(id, "FE") && continue
         patterns = [Regex(string(id, raw"_S\d+_", p)) for p in rawfastq_patterns]
         
         notfound += count(p-> !any(f-> contains(basename(f), p), allfiles), patterns)

@@ -11,7 +11,10 @@ _get_samples(p::String; kwargs...) = _get_samples(Val(Symbol(p)); kwargs...)
 
 function _get_samples(p::Val{T}; force=false, interval=Month(1)) where T
     pmd = nested_metadata("Project"; force, interval)
-    return pmd[findfirst(t-> t.fields[:Name] == String(T), pmd)].fields[:Samples]
+    pidx = findfirst(rec-> rec.fields[:Name] == String(T), pmd)
+    isnothing(pidx) && throw(ArgumentError("Project $(String(T)) not found. Possible projects: $([rec.fields[:Name] for rec in pmd])"))
+
+    return pmd[pidx].fields[:Samples]
 end
 
 function load(::Metadata, project; force=false, interval=Month(1))
