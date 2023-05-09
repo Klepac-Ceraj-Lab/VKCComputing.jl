@@ -5,6 +5,7 @@
 Connecting Airtable tables with local instances
 """
 struct VKCAirtable
+    key::Airtable.Credential
     base::AirBase
     name::String
     localpath::String
@@ -26,24 +27,28 @@ _gen_table(name::Symbol) = _gen_table(Val(name))
 _gen_table(::Val{T}) where T = throw(ArgumentError("No table method defined for $(String(T))"))
 
 _gen_table(::Val{:Project}) = VKCAirtable(
+    Airtable.Credential(),
     AirBase("appSWOVVdqAi5aT5u"),
     "Project",
     joinpath(@load_preference("airtable_dir"), "airtable_project.json")
 )
 
 _gen_table(::Val{:Samples}) = VKCAirtable(
+    Airtable.Credential(),
     AirBase("appSWOVVdqAi5aT5u"),
     "Samples",
     joinpath(@load_preference("airtable_dir"), "airtable_samples.json")
 )
 
 _gen_table(::Val{:MGX_Batches}) = VKCAirtable(
+    Airtable.Credential(),
     AirBase("appSWOVVdqAi5aT5u"),
     "MGX Batches",
     joinpath(@load_preference("airtable_dir"), "airtable_mgxbatches.json")
 )
 
 _gen_table(::Val{:Amplicon_Batches}) = VKCAirtable(
+    Airtable.Credential(),
     AirBase("appSWOVVdqAi5aT5u"),
     "Amplicon Batches",
     joinpath(@load_preference("airtable_dir"), "airtable_ampliconbatches.json")
@@ -97,7 +102,7 @@ function Airtable.query(key, tab::VKCAirtable)
     Airtable.query(key, table)
 end
 
-Airtable.query(tab::VKCAirtable) = Airtable.query(Airtable.Credential(), tab)
+Airtable.query(tab::VKCAirtable) = Airtable.query(tab.key, tab)
 
 
 """
