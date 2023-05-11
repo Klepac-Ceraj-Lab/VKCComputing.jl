@@ -190,3 +190,15 @@ end
 #-
 
 seqids = Airtable.post!(Airtable.Credential(newpat), AirTable("SequencingPrep", newdb), newseqs)
+seqids_dict = uuid_map(seqids)
+
+#-
+
+put_aliases = [(;
+    uid = k,
+    biospecimens = unique([biosp_map[j] for j in alias_dict[k]]),
+    biospecimens_notes = "- from `sid_old` column in old database"
+    ) for k in keys(alias_dict)
+]
+
+Airtable.post!(Airtable.Credential(newpat), AirTable("Aliases", newdb), put_aliases)
