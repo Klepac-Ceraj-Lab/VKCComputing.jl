@@ -14,4 +14,3 @@ function set_default_preferences!()
     end
 end
 
-set_airtable_dir!(dir) = @set_preferences!("airtable_dir"=> dir)

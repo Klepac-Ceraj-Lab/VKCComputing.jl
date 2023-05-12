@@ -1,25 +1,9 @@
 module VKCComputing
 
-# Airtable interfase
-export VKCAirtable,
-       vkctable,
-       nested_metadata,
-       tabular_metadata,
-       update_airtable_metadata!,
-       mgx_tool_files
-
-# Data API
-export Metadata,
-       Readcounts,
-       TaxonomicProfiles,
-       FunctionalProfiles       
-
-export rename_map,
-       rename_files,
-       airtable_metadata,
-       find_raw,
-       find_analysis_files,
-       set_logs!
+# airtable
+export LocalBase,
+       vkcairtable,
+       localairtable
 
 using CSV
 using DataFrames
@@ -34,12 +18,7 @@ using Dictionaries
 
 
 include("preferences.jl")
-include("metadata.jl")
-include("dataAPI.jl")
+include("airtable_interface.jl")
 
-include("files.jl")
-
-include("audit.jl")
-include("renaming.jl")
 
 end # module
