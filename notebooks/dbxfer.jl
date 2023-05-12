@@ -8,8 +8,8 @@ using LoggingExtras
 using MiniLoggers
 using Dictionaries
 
-oldpat = ENV["AIRTABLE_KEY"] # PAT with read record access to `μBiome Samples` Base
-newpat = ENV["AIRTABLE_NEWDB_PAT"] # PATH with read/write for both records and schema for new SequencingSamples Base
+oldpat = @load_preference(VKCComputing, "old_readonly_pat") # PAT with read record access to `μBiome Samples` Base
+newpat = @load_preference(VKCComputing, "new_readwrite_pat") # PATH with read/write for both records and schema for new SequencingSamples Base
 
 olddb = AirBase("appSWOVVdqAi5aT5u")
 newdb = AirBase("appmYwoXIHlen5s0q")

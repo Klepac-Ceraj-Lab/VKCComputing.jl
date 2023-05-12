@@ -30,13 +30,7 @@ using Airtable
 using Preferences
 using Dates
 using TimeZones
-
-using REPL
-using QuickMenus
-import QuickMenus: RadioMenu
-using ProgressLogging
-using MiniLoggers
-using LoggingExtras
+using Dictionaries
 
 
 include("preferences.jl")
@@ -45,7 +39,6 @@ include("dataAPI.jl")
 
 include("files.jl")
 
-include("cli.jl")
 include("audit.jl")
 include("renaming.jl")
 
