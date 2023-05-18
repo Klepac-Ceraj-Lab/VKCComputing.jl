@@ -133,8 +133,12 @@ function localairtable(tab::VKCAirtable; update = Month(1))
     data = ThreadsX.map(nested_metadata(tab; update)) do rec
         AirRecord(rec.id, AirTable(tab.name, tab.base), rec.fields)
     end
-    uid_idx = dictionary(map(i-> (haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields), i), eachindex(data)))
-    atid_idx = dictionary(map(i-> (data[i].id, haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields)), eachindex(data)))
+    uid_idx = dictionary(map(eachindex(data)) do i
+        (haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields), i)
+    end)
+    atid_idx = dictionary(map(eachindex(data)) do i
+        (data[i].id, haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields))
+    end)
 
     return LocalAirtable(tab, data, uid_idx, atid_idx)
 end

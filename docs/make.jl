@@ -6,7 +6,7 @@ DocMeta.setdocmeta!(VKCComputing, :DocTestSetup, :(using VKCComputing); recursiv
 makedocs(;
     modules = [VKCComputing],
     authors = "Kevin Bonham, PhD <kbonham@wellesley.edu> and contributors",
-    repo = "https://github.com/Klepac-Ceraj-Lab/VKCComputing/blob/{commit}{path}#{line}",
+    repo = "https://github.com/Klepac-Ceraj-Lab/VKCComputing.jl/blob/{commit}{path}#{line}",
     sitename = "VKCComputing",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
