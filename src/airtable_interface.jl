@@ -28,7 +28,13 @@ end
     LocalBase(; update=Month(1))
 
 Load the airtable sample database into memory.
-The `update` keyword argument can take a number of different forms
+Requires that an airtable key with read access
+and a directory for storing local files are set to preferences.
+(see [`set_readonly_pat!`](@ref) and [`set_airtable_dir!`](@ref).
+
+## Updating local base files
+
+The `update` keyword argument can take a number of different forms.
 
 1. A boolean value, which will cause updates to all tables if `true`,
    and no tables if `false`.
@@ -41,8 +47,27 @@ For example, to update the "Biospecimens" table if it's older than a week,
 and to update the "Projects" table no matter what, call
 
 ```julia
+julia> using VKCComputing, Dates
 
+julia> base = LocalBase(; update=["Biospecimens"=> Week(1), "Projects"=> true]);
 ```
+
+## Indexing
+
+Indexing into the local base can be done either with the name of a table
+(eg `base["Biospecimens"]`), which will return a [`VKCAirtable`](@ref),
+or using a record ID hash (eg `base["recUqEcu3pM8p2jzQ"]`). 
+
+!!! warning
+    Note that record ID hashes are identified based on the regular expression
+    `r"^rec[A-Za-z0-9]{14}\$"` - that is, a string starting with `"rec"`,
+    followed by exactly 14 alphanumeric characters.
+    In principle, one could name a table as something that matches this regular expression,
+    causing it to be improperly identified as a record hash rather than a table name.
+
+[`VCKAirtable`](@ref)s can also be indexed with the `uid` column string,
+so an individual record can be accessed using eg `base["Projects"]["khula"]`,
+but a 2-argument indexing option is provided for convenience, eg `base["Projects", "khula"]`.
 """
 struct LocalBase
     tableidx::Dictionary{String, LocalAirtable}
@@ -63,7 +88,7 @@ _localbase_update(arg::AbstractVector) = merge(_localbase_update(), dictionary(a
 LocalBase(; update = Month(1)) = LocalBase(_localbase_update(update))
 
 _isrecordhash(query)::Bool = false
-_isrecordhash(query::AbstractString)::Bool = contains(query, r"^rec\w+$")
+_isrecordhash(query::AbstractString)::Bool = contains(query, r"^rec[A-Za-z0-9]{14}$")
 
 const oldbase = AirBase("appSWOVVdqAi5aT5u")
 const newbase = AirBase("appmYwoXIHlen5s0q")
