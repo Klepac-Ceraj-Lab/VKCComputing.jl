@@ -14,3 +14,8 @@ function set_default_preferences!()
     end
 end
 
+set_readonly_pat!(key=get(ENV, "AIRTABLE_KEY", nothing)) =
+    isnothing(key) ? throw(ArgumentError("'AIRTABLE_KEY' environment variable not found")) : @set_preferences!("readonly_pat", key)
+
+set_readwrite_pat!(key=get(ENV, "AIRTABLE_RW_KEY", nothing)) =
+    isnothing(key) ? throw(ArgumentError("'AIRTABLE_RW_KEY' environment variable not found")) : @set_preferences!("readwrite_pat", key)
