@@ -10,7 +10,7 @@ makedocs(;
     sitename = "VKCComputing",
     format = Documenter.HTML(;
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://Klepac-Ceraj-Lab.github.io/VKCComputing",
+        canonical = "https://Klepac-Ceraj-Lab.github.io/VKCComputing.jl",
         edit_link = "main",
         assets = String[],
     ),
