@@ -133,8 +133,8 @@ function localairtable(tab::VKCAirtable; update = Month(1))
     data = ThreadsX.map(nested_metadata(tab; update)) do rec
         AirRecord(rec.id, AirTable(tab.name, tab.base), rec.fields)
     end
-    uid_idx = dictionary(map(i-> (first(data[i].fields), i), eachindex(data)))
-    atid_idx = dictionary(map(i-> (data[i].id, first(data[i].fields)), eachindex(data)))
+    uid_idx = dictionary(map(i-> (haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields), i), eachindex(data)))
+    atid_idx = dictionary(map(i-> (data[i].id, haskey(data[i].fields, :uid) ? data[i].fields[:uid] : first(data[i].fields)), eachindex(data)))
 
     return LocalAirtable(tab, data, uid_idx, atid_idx)
 end
@@ -143,9 +143,13 @@ Base.show(io::IO, tab::VKCAirtable) = print(io, "Airtable with name \"$(tab.name
 Base.show(io::IO, tab::LocalAirtable) = print(io, "Airtable with name \"$(tab.table.name)\" and $(length(tab.data)) records")
 Base.show(io::IO, base::LocalBase) = print(io, join(values(base.tableidx), '\n'))
 
+Base.haskey(base::LocalBase, k) = _isrecordhash(k) ? haskey(base.recordidx, k) : haskey(base.tableidx, k)
+
 Base.getindex(base::LocalBase, i) = _isrecordhash(i) ? base[base.recordidx[i]][i] : base.tableidx[i]
 Base.getindex(base::LocalBase, v::AbstractVector) = ThreadsX.map(i-> getindex(base, i), v)
 Base.getindex(base::LocalBase, i, j) = base[i][j]
+
+Base.haskey(tab::LocalAirtable, k) = _isrecordhash(k) ? haskey(tab.atid_idx, k) : haskey(tab.uid_idx, k)
 
 Base.getindex(tab::LocalAirtable, i) = getindex(tab.data, i)
 Base.getindex(tab::LocalAirtable, i::String) = _isrecordhash(i) ? getindex(tab, tab.atid_idx[i]) : getindex(tab.data, tab.uid_idx[i])
@@ -155,6 +159,20 @@ function Base.getindex(tab::LocalAirtable, reg::Regex)
     idx = findall([contains(k, reg) for k in keys(tab.uid_idx)])
     return tab[idx]
 end
+
+"""
+    uids(tab::LocalAirtable)
+
+Get the keys for the `uid` column of table `tab`.
+"""    
+uids(tab::LocalAirtable) = keys(tab.uid_idx)
+
+"""
+    uids(base::LocalBase, tab::String)
+
+Get the keys for the `uid` column of table `tab` from `base`.
+"""
+uids(base::LocalBase, tab::String) = keys(base[tab].uid_idx)
 
 function _should_update(mod, update::Bool)
     update && @debug "Should update: `update = true`"

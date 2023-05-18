@@ -3,7 +3,8 @@ module VKCComputing
 # airtable
 export LocalBase,
        vkcairtable,
-       localairtable
+       localairtable,
+       uids
 
 using CSV
 using DataFrames
