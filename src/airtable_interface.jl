@@ -24,6 +24,26 @@ struct LocalAirtable
     atid_idx::Dictionary
 end
 
+"""
+    LocalBase(; update=Month(1))
+
+Load the airtable sample database into memory.
+The `update` keyword argument can take a number of different forms
+
+1. A boolean value, which will cause updates to all tables if `true`,
+   and no tables if `false`.
+2. An `AbstractTime` from `Dates` (eg `Week(1)`), which will update any table
+   whose local copy was last updated longer ago than this value.
+3. A vector of `Pair`s of the form `"\$table_name"=> x`, where `x` is either
+   of the options from (1) or (2) above.
+
+For example, to update the "Biospecimens" table if it's older than a week,
+and to update the "Projects" table no matter what, call
+
+```julia
+
+```
+"""
 struct LocalBase
     tableidx::Dictionary{String, LocalAirtable}
     recordidx::Dictionary{String, String}
