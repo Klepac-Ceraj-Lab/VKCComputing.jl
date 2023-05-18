@@ -20,7 +20,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/Klepac-Ceraj-Lab/VKCComputing",
+    repo = "github.com/Klepac-Ceraj-Lab/VKCComputing.jl",
     push_preview = true,
     devbranch = "main",
 )
