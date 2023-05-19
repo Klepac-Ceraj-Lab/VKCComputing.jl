@@ -16,6 +16,9 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
+        "Examples" => [
+            "Renaming"=> "examples/renaming_files.md"
+        ]
     ]
 )
 

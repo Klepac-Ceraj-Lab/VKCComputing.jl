@@ -12,5 +12,19 @@ to download inputs and replicate the analysis for this manuscript.
 ```@index
 ```
 
-```@autodocs
+## Setup environment
+
+```@docs
+set_default_preferences!
+set_airtable_dir!
+set_readonly_pat!
+set_readwrite_pat!
 ```
+
+```@docs
+VKCAirtable
+LocalAirtable
+LocalBase
+vkcairtable
+```
+
