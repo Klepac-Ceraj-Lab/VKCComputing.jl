@@ -117,19 +117,19 @@ Now, we want to build a mapping of biospecimen => seqprep ID.
 I'll store this as rows in a `DataFrame`.
 
 ```julia-repl
-julia> rnmap = DataFrame(mapreduce(vcat, biosp) do rec
+julia> rndf = DataFrame(mapreduce(vcat, biosp) do rec
     rows = [(; seqname = base[id][:uid], oldname = rec[:uid]) for id in rec[:seqprep]]
 end);
 ```
 
-Unfortunately, some of these are ambiguous -
-that is, the same biospecimen can refer to multiple seqprep IDs.
+It is in principle possible for a single biospecimen ID to refer
+to multiple seqprep IDs.
 Let's check that:
 
 ```julia-repl
-julia> transform!(groupby(rnmap, :oldname), "seqname"=> length => "n_seqs");
+julia> transform!(groupby(rndf, :oldname), "seqname"=> length => "n_seqs");
 
-julia> subset(rnmap, "n_seqs"=> ByRow(>(1)))
+julia> subset(rndf, "n_seqs"=> ByRow(>(1)))
 6×3 DataFrame
  Row │ seqname   oldname  n_seqs
      │ String    String   Int64
@@ -142,6 +142,121 @@ julia> subset(rnmap, "n_seqs"=> ByRow(>(1)))
    6 │ SEQ01232  FE01105       2
 ```
 
-It looks like these aren't ambiguous after all,
-though it's unclear how they ended up in the table twice.
-In any case, we can ignore them for now, since 
+Now, we'll build a map of `oldname` -> `seqname`.
+
+```julia-repl
+rnmap = dictionary(zip(rndf.oldname, rndf.seqname))
+1799-element Dictionary{String, String}
+ "FG50159" │ "SEQ01107"
+ "FG50160" │ "SEQ01108"
+ "FG00846" │ "SEQ01371"
+ #...
+```
+
+## Finding files to rename
+
+I'm running this on `hopper`, so files are contained
+in the `/grace` drive, as well as some other places.
+But we'll start there.
+
+The first thing to do is find all of the files
+that could plausibly be in `ECHO`.
+They all fit the pattern `r"F[EG]\d{5}` -
+that is, "FE or "FG" followed by 5 numbers (`\d` stands for "digit").
+Let's make sure that's true for our rename map:
+
+```
+julia> all(k-> contains(k, r"F[EG]\d{5}"), keys(rnmap))
+true
+```
+
+So now we'll recurse through the directory,
+saving any files that fit the pattern.
+While we're at it, we can pull out some relevant info
+and push it into a `DataFrame`.
+
+
+```julia-repl
+julia> filedf = DataFrame()
+
+julia>  for (root, dir, files) in walkdir("/grace/sequencing/processed/mgx")
+            for file in files
+                m = match(r"^(F[EG]\d{5})_(S\d+)_", file)
+                isnothing(m) && continue
+                newname = get(rnmap, m[1], nothing)
+                if isnothing(newname)
+                    @warn "$(m[1]) matches the regex, but doesn't have a new name"
+                    continue
+                end
+                push!(filedf, (;
+                    oldname = m[1], newname, snum = m[2], oldpath = joinpath(root, file), newpath = joinpath(root, replace(file, m[1]=>newname))
+                ))
+            end
+        end
+
+julia> first(filedf, 5)
+5×5 DataFrame
+ Row │ oldname    newname   snum       oldpath                            newpath
+     │ SubStrin…  String    SubStrin…  String                             String
+─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ FE01063    SEQ02371  S93        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…
+   2 │ FE01063    SEQ02371  S93        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…
+   3 │ FE01063    SEQ02371  S93        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…
+   4 │ FE01064    SEQ00905  S10        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…
+   5 │ FE01064    SEQ00905  S10        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…
+
+```
+
+Now, we want to double check that all of the `oldname`s
+are associated with the same `snum` to avoid ambiguities.
+Here, we group by `oldname`, and then look at the `snum` column
+to ensure there is only 1
+(we check that the length of unique elements in that column is 1).
+
+```
+julia> transform!(groupby(filedf, :oldname), "snum"=> (sn-> length(unique(sn)) != 1) => "ambiguous");
+
+julia> unique(subset(filedf, "ambiguous"=> identity), ["oldname", "snum"])
+16×6 DataFrame
+ Row │ oldname    newname   snum       oldpath                            newpath                            ambiguous
+     │ SubStrin…  String    SubStrin…  String                             String                             Bool
+─────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   1 │ FG00004    SEQ01071  S26        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   2 │ FG00004    SEQ01071  S46        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   3 │ FG00005    SEQ01950  S50        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   4 │ FG00005    SEQ01950  S58        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   5 │ FG00016    SEQ01110  S52        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   6 │ FG00016    SEQ01110  S70        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   7 │ FG00017    SEQ02084  S64        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   8 │ FG00017    SEQ02084  S82        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+   9 │ FG00021    SEQ01862  S53        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  10 │ FG00021    SEQ01862  S94        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  11 │ FG02294    SEQ02303  S1         /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  12 │ FG02294    SEQ02303  S34        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  13 │ FG02471    SEQ01727  S16        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  14 │ FG02471    SEQ01727  S89        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  15 │ FG02614    SEQ01971  S10        /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+  16 │ FG02614    SEQ01971  S9         /grace/sequencing/processed/mgx/…  /grace/sequencing/processed/mgx/…       true
+```
+
+So for now, we'll leave these out and deal with them later.
+
+## Renaming
+
+
+
+```julia-repl
+julia>  for grp in groupby(filedf, "oldname")
+            old = first(grp.oldname)
+            @info "Working on $old"
+            if any(grp.ambiguous)
+                @warn "$old has multiple sequecing results: $(unique(grp.snum)); skipping!"
+            else
+                @info "Renaming $(old) to $(first(grp.newname))"
+                for row in eachrow(grp)
+                    @debug "$(row.oldpath) => $(row.newpath)"
+                    mv(row.oldpath, row.newpath)
+                end
+            end
+        end
+```
