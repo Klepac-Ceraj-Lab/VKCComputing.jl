@@ -1,5 +1,5 @@
 include("VKCComputingTests.jl")
-VKCComputingTests.runtests()
+VKCComputingTests.retest()
 
 using VKCComputing
-VKCComputing.runtests()
+VKCComputing.retest()
