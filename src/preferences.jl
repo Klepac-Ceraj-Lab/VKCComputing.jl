@@ -28,7 +28,7 @@ Sets local preferences for `airtable_dir` to `key`
 (defaults to the environmental variable `"AIRTABLE_DIR"` if set).
 """
 set_airtable_dir!(key=get(ENV, "AIRTABLE_DIR", nothing)) =
-    isnothing(key) ? throw(ArgumentError("'AIRTABLE_DIR' environment variable not found")) : @set_preferences!("airtable_dir", key)
+    isnothing(key) ? throw(ArgumentError("'AIRTABLE_DIR' environment variable not found")) : @set_preferences!("airtable_dir"=> key)
 
 """
     set_readonly_pat!(key)
@@ -37,7 +37,7 @@ Sets local preferences for `readonly_pat` to `key`
 (defaults to the environmental variable `"AIRTABLE_KEY"` if set).
 """
 set_readonly_pat!(key=get(ENV, "AIRTABLE_KEY", nothing)) =
-    isnothing(key) ? throw(ArgumentError("'AIRTABLE_KEY' environment variable not found")) : @set_preferences!("readonly_pat", key)
+    isnothing(key) ? throw(ArgumentError("'AIRTABLE_KEY' environment variable not found")) : @set_preferences!("readonly_pat"=> key)
 
 """
     set_readwrite_pat!(key)
@@ -46,4 +46,4 @@ Sets local preferences for `readwrite_pat` to `key`
 (defaults to the environmental variable `"AIRTABLE_RW_KEY"` if set).
 """
 set_readwrite_pat!(key=get(ENV, "AIRTABLE_RW_KEY", nothing)) =
-    isnothing(key) ? throw(ArgumentError("'AIRTABLE_RW_KEY' environment variable not found")) : @set_preferences!("readwrite_pat", key)
+    isnothing(key) ? throw(ArgumentError("'AIRTABLE_RW_KEY' environment variable not found")) : @set_preferences!("readwrite_pat"=> key)

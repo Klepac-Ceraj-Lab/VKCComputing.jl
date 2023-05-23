@@ -115,9 +115,17 @@ Returns a [VKCAirtable](@ref) type based on the table name.
 Requires that the local preference `airtable_dir` is set.
 See [VKCComputing.set_preferences!](@ref).
 """
-function vkcairtable(name::String; olddb = false)
-    key = Airtable.Credential(olddb ? @load_preference("old_readwrite_pat") : @load_preference("new_readwrite_pat"))
-    base = olddb ? oldbase : newbase
+function vkcairtable(name::String) #; olddb = false)
+    if @has_preference("readonly_pat")
+        pat = @load_preference("readonly_pat")
+    elseif @has_preference("readwrite_pat")
+        pat = @load_preference("readonly_pat")
+    else 
+        pat = get(ENV, "AIRTABLE_KEY", nothing)
+    end
+    isnothing(pat) && throw(ArgumentError("No airtable key available - set preference for 'readonly_pat' or 'readwrite_pat', or the environmental variable 'AIRTABLE_KEY'"))
+    key = Airtable.Credential(pat)
+    base = newbase # olddb ? oldbase : newbase
     return VKCAirtable(key, base, name,
                 joinpath(@load_preference("airtable_dir"), 
                     "airtable_$(lowercase(replace(name, " "=> ""))).json")
