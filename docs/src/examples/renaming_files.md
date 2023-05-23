@@ -375,3 +375,6 @@ to `FG02471`, while `S89` should go with `FG00757`.
 
 ## Conclusion
 
+This example shows how to download and access the local airtable base,
+use it to generate a rename mapping, and use that to rename files,
+taking into account ambiguities.
