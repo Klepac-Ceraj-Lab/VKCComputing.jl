@@ -5,6 +5,9 @@
 After changing the way that we label samples,
 we sometimes need to update a previous file-name
 or table column name to reflect the new system.
+This code will not produce the same outputs anymore,
+since the state of drives and the database has changed in the meantime.
+It's meant more as documentation of the process.
 
 ## Getting current data
 
@@ -243,8 +246,6 @@ So for now, we'll leave these out and deal with them later.
 
 ## Renaming
 
-
-
 ```julia-repl
 julia>  for grp in groupby(filedf, "oldname")
             old = first(grp.oldname)
@@ -260,3 +261,117 @@ julia>  for grp in groupby(filedf, "oldname")
             end
         end
 ```
+
+## Dealing with Ambiguities
+
+Let's go back to our ambiguous sequences.
+
+```julia-repl
+julia> ambi = subset(filedf, "ambiguous"=> identity);
+
+julia> unique(select(ambi, ["oldname", "newname", "snum"]))
+16×3 DataFrame
+ Row │ oldname    newname   snum
+     │ SubStrin…  String    SubStrin…
+─────┼────────────────────────────────
+   1 │ FG00004    SEQ01071  S26
+   2 │ FG00004    SEQ01071  S46
+   3 │ FG00005    SEQ01950  S50
+   4 │ FG00005    SEQ01950  S58
+   5 │ FG00016    SEQ01110  S52
+   6 │ FG00016    SEQ01110  S70
+   7 │ FG00017    SEQ02084  S64
+   8 │ FG00017    SEQ02084  S82
+   9 │ FG00021    SEQ01862  S53
+  10 │ FG00021    SEQ01862  S94
+  11 │ FG02294    SEQ02303  S1
+  12 │ FG02294    SEQ02303  S34
+  13 │ FG02471    SEQ01727  S16
+  14 │ FG02471    SEQ01727  S89
+  15 │ FG02614    SEQ01971  S10
+  16 │ FG02614    SEQ01971  S9
+
+```
+
+For the first 12 rows
+(samples `FG00004`, `F00005`, `FG00016`, `FG00017`, `FG0021`, and `FG02294`),
+the solution is relatively simple.
+Each of these had 2 aliquots of the same biospecimen sequenced.
+So in each of those cases,
+I duplicated the record in the SequencingPrep table
+(generating a new `SEQ` id), added the correct S-well number,
+and put in the old IDs as aliases. Eg, `FG00004` is now
+
+| uid      | autonumber | biospecimen | swell | alias        |
+| -------- | ---------- | ----------- |------ | ------------ |
+| SEQ01071 | 1071       | FG00004     | S26   | C0117_4F_1A  |
+| SEQ02505 | 2505       | FG00004     | S46   | C0117_4F_1B  |
+
+For FG02614, there is only a single file (`FG02614_S9_pfams.tsv`)
+that has the S9 identifier.
+Looking at the contents of that file:
+
+```
+❯ head mgx/humann/regroup/FG02614_S9_pfams.tsv
+# Gene Family   FG02610_S9_Abundance-RPKs
+UNMAPPED        14128546.0
+UNGROUPED       29634105.328100212
+UNGROUPED|g__Adlercreutzia.s__Adlercreutzia_equolifaciens       17608.29535663359
+UNGROUPED|g__Agathobaculum.s__Agathobaculum_butyriciproducens   44303.814025389926
+UNGROUPED|g__Akkermansia.s__Akkermansia_muciniphila     118128.883395747
+UNGROUPED|g__Alistipes.s__Alistipes_finegoldii  125084.06209765507
+UNGROUPED|g__Alistipes.s__Alistipes_indistinctus        24720.017810163998
+UNGROUPED|g__Alistipes.s__Alistipes_putredinis  1052709.4440796026
+UNGROUPED|g__Alistipes.s__Alistipes_shahii      86567.54527132263
+```
+
+Based on the header, it looks like it belongs to `FG02610`.
+We have all of the files for `FG02610`, so I'm just going to delete these
+files (the `FG02614_S9` ones).
+
+`FG02471` is weirder. We have all of the relevant files for both `S16` and `S89`.
+Looking at the contents, 
+
+```
+kevin in vkclab-ada in /lovelace/sequencing/processed on ☁️  (us-east-1)
+❯ head -5 mgx/metaphlan/FG02471_S*_profile.tsv
+==> mgx/metaphlan/FG02471_S16_profile.tsv <==
+#mpa_v30_CHOCOPhlAn_201901
+#/home/vklepacc/miniconda3/envs/biobakery3/bin/metaphlan output/kneaddata/FG02471_S16_kneaddata.fastq output/metaphlan/FG02471_S16_profile.tsv --bowtie2out output/metaphlan/FG02471_S16_bowtie2.tsv --samout output/metaphlan/FG02471_S16.sam --input_type fastq --nproc 8 --bowtie2db /pool001/vklepacc/databases/metaphlan
+#SampleID       Metaphlan_Analysis
+#clade_name     NCBI_tax_id     relative_abundance      additional_species
+k__Bacteria     2       99.08787
+
+==> mgx/metaphlan/FG02471_S89_profile.tsv <==
+#mpa_v30_CHOCOPhlAn_201901
+#/home/vklepacc/miniconda3/envs/biobakery3/bin/metaphlan output/kneaddata/C0477-5F-1A_S89_merged.fastq output/metaphlan/C0477-5F-1A_S89_profile.tsv --bowtie2out output/metaphlan/C0477-5F-1A_S89_bowtie2.tsv --samout output/metaphlan/C0477-5F-1A_S89.sam --input_type fastq --nproc 8
+#SampleID       Metaphlan_Analysis
+#clade_name     NCBI_tax_id     relative_abundance      additional_species
+k__Bacteria     2       99.12309
+
+kevin in vkclab-ada in /lovelace/sequencing/processed on ☁️  (us-east-1)
+❯ head -5 mgx/humann/main/FG02471_*genefamilies.tsv
+==> mgx/humann/main/FG02471_S16_genefamilies.tsv <==
+# Gene Family   FG02471_S16_Abundance-RPKs
+UNMAPPED        4356120.0000000000
+UniRef90_A0A3E2XRX6     15802.1208367696
+UniRef90_A0A3E2XRX6|g__Dorea.s__Dorea_longicatena       15802.1208367696
+UniRef90_A5ZYV3 12866.1165754399
+
+==> mgx/humann/main/FG02471_S89_genefamilies.tsv <==
+# Gene Family   C0477-5F-1A_S89_Abundance-RPKs
+UNMAPPED        3152316.0000000000
+UniRef90_A7V4G2 8649.8613270401
+UniRef90_A7V4G2|g__Bacteroides.s__Bacteroides_uniformis 8552.3697112122
+UniRef90_A7V4G2|unclassified    97.4916158279
+```
+
+The `S89` has the old ID in the header (`C0477-5F-1A`),
+which is the correct one according to the old database,
+but it looks like this same ID was sequenced in a different batch (old batch 11)
+under the ID `FG00757`. Given the surrounding S-well IDs,
+it looks like `S16`, sequenced in (old) batch 17 is correctly attributed
+to `FG02471`, while `S89` should go with `FG00757`. 
+
+## Conclusion
+
