@@ -22,7 +22,7 @@ using TestItems
 include("preferences.jl")
 include("airtable_interface.jl")
 
-@testitem "Placeholder" begin
+@testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
 end
 
