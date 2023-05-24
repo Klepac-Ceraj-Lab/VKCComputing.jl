@@ -1,5 +1,7 @@
-include("VKCComputingTests.jl")
-VKCComputingTests.retest()
+using TestItemRunner
 
-using VKCComputing
-VKCComputing.retest()
+@run_package_tests
+
+@testitem "In tests" begin
+    @test true
+end
