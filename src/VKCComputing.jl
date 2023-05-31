@@ -21,6 +21,7 @@ using TestItems
 
 include("preferences.jl")
 include("airtable_interface.jl")
+include("record_ops.jl")
 
 @testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
