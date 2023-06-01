@@ -371,7 +371,8 @@ which is the correct one according to the old database,
 but it looks like this same ID was sequenced in a different batch (old batch 11)
 under the ID `FG00757`. Given the surrounding S-well IDs,
 it looks like `S16`, sequenced in (old) batch 17 is correctly attributed
-to `FG02471`, while `S89` should go with `FG00757`. 
+to `FG02471` (which will become `SEQ01727`),
+while `S89` should go with `FG00757` (which becomes `SEQ02512`). 
 
 ## Conclusion
 

@@ -124,7 +124,7 @@ function vkcairtable(name::String) #; olddb = false)
         pat = get(ENV, "AIRTABLE_KEY", nothing)
     end
     isnothing(pat) && throw(ErrorException("No airtable key available - set preference for 'readonly_pat' or 'readwrite_pat', or the environmental variable 'AIRTABLE_KEY'"))
-    !@has_preference "airtable_dir" && throw(ErrorException("Need `airtable_dir` preference set"))
+    !(@has_preference "airtable_dir") && throw(ErrorException("Need `airtable_dir` preference set"))
     key = Airtable.Credential(pat)
     base = newbase # olddb ? oldbase : newbase
     return VKCAirtable(key, base, name,
