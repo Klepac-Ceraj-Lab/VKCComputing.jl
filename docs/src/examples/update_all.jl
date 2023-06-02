@@ -6,8 +6,10 @@
 
 using MiniLoggers, LoggingExtras
 
+ratelimitlogger(log_args) = !contains(log_args.message, "Pausing for rate-limiting")
+
 consolelogger = MiniLogger(; minlevel=MiniLoggers.Info, message_mode=:markdown)
-filelogger = MiniLogger(; minlevel=MiniLoggers.Info, append=true, io="rename_all.log")
+filelogger = ActiveFilteredLogger(ratelimitlogger, MiniLogger(; minlevel=MiniLoggers.Info, append=true, io="rename_all.log"))
 
 global_logger(TeeLogger(consolelogger, filelogger))
 
@@ -22,9 +24,7 @@ using DataFrames
 using Airtable
 
 @info "Updating local airtable files"
-Base.with_logger(consolelogger) do
-    base = LocalBase(; update = true)
-end
+base = LocalBase(; update = true)
 
 analysis_dir = load_preference(VKCComputing, "mgx_analysis_dir")
 @info "Using analysis directory $analysis_dir"
@@ -59,13 +59,17 @@ end
 transform!(analysis_files, "dir"=> ByRow(dir-> first(splitpath(replace(dir, analysis_dir=> "")))) => "tool")
 sample_groups = groupby(analysis_files, "sample")
 
-@info "Working with $(length(sample_groups)) files"
+@info "Working with $(length(sample_groups)) samples"
 
 #-
 
 transform!(sample_groups, "sample"=> ByRow(s-> startswith(s, "SEQ")) => "is_seqrecord")
 @info "$(length(unique(subset(sample_groups, "is_seqrecord"=> ByRow(identity)).sample))) samples are SEQ records"
 @info "$(length(unique(subset(sample_groups, "is_seqrecord"=> ByRow(!identity)).sample))) samples are NOT SEQ records"
+
+#-
+
+transform!(sample_groups, "sample"=> (s-> haskey(base["Biospecimens"], first(s)) || haskey(base["Biospecimens"], replace(first(s), "_"=> "-", "-"=> "_")))=> "has_biospecimen")
 
 #-
 
@@ -130,54 +134,28 @@ key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
 
 #-
 
-testdf = completion[1:1000:end, :]
-
-ukrow = first(eachrow(testdf))
-sqrow = last(first(eachrow(testdf), 2))
-fgrow = last(eachrow(testdf))
-
 biosp_remote = AirTable("Biospecimens", VKCComputing.newbase)
 seqprep_remote = AirTable("SequencingPrep", VKCComputing.newbase)
 
-for row in eachrow(completion[3002:end, :])
-    if haskey(base["SequencingPrep"], row.sample)
-        seqrec = base["SequencingPrep", row.sample]
-        smprec = seqrec[:biospecimen]
-        if length(smprec) > 1
-            @warn "$(seqrec[:uid]) has more than one biospecimen, skipping"
-            continue
-        else
-            smprec = first(smprec)
-        end
-    elseif haskey(base["Biospecimens"], row.sample)
-        smprec = base["Biospecimens", row.sample]
-        if haskey(smprec, :seqprep)
-            seqrec = base["SequencingPrep", smprec[:seqprep]]
-            if length(seqrec) > 1
-                @warn "$(smprec[:uid]) has more than one sequencing prep, skipping"
-                continue
-            else
-                seqrec = first(seqrec)
-            end
-        end
-    else
-        smprec = Airtable.post!(key, biosp_remote, (; uid = row.sample))
-        seqrec = Airtable.post!(key, seqprep_remote, (; biospecimen = [smprec.id]))
-    end
+rename_targets = subset(analysis_files, "has_biospecimen"=> identity, "is_unique_swell"=> identity)
+transform!(rename_targets, "sample"=> ByRow(s -> begin
+    bsrec = base["Biospecimens", s]
+    (!haskey(bsrec, :seqprep) || length(bsrec[:seqprep]) > 2) ? missing : first(base[bsrec[:seqprep]])[:uid]
+end)=> "seqid")
 
-    if !haskey(base["SequencingPrep"], row.sample)
-        files = sample_groups[(; sample=smprec[:uid])]
-        newnames = replace.(files.file, smprec[:uid]=> seqrec[:uid])
-        for (i, row) in enumerate(eachrow(files))
-            oldfile = joinpath(row.dir, row.file)
-            newfile = joinpath(row.dir, newnames[i])
-            if isfile(newfile)
-                @warn "$newfile already exists, deleting $oldfile"
-                rm(oldfile; force=true)
-            else
-                mv(oldfile, newfile)
-            end
-        end
-    end
-    Airtable.patch!(key, seqrec, (; S_well=row.s_well, kneaddata = row.has_kneaddata, metaphlan = row.metaphlan_complete, humann = row.humann_basic_complete))
+rename_targets[findall(==("KMZ43460"), rename_targets.sample), :seqid] .= "SEQ00211"
+
+biospecimens = base["Biospecimens"][rename_targets.sample]
+
+#-
+
+for row in eachrow(subset(rename_targets, "seqid"=> ByRow(!ismissing)))
+    oldpath = joinpath(row.dir, row.file)
+    newpath = joinpath(row.dir, replace(row.file, row.sample=> row.seqid))
+    @info "Renameing $oldpath to $newpath"
+    mv(oldpath, newpath)
 end
+
+# ## Ambiguities
+
+CSV.write("/lovelace/sequencing/20230602_file_renaming.csv", rename_targets)

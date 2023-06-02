@@ -6,6 +6,9 @@ export LocalBase,
        localairtable,
        uids
 
+# files
+export get_analysis_files
+
 using CSV
 using DataFrames
 using JSON3
@@ -22,6 +25,7 @@ using TestItems
 include("preferences.jl")
 include("airtable_interface.jl")
 include("record_ops.jl")
+include("file_interface.jl")
 
 @testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
