@@ -6,6 +6,9 @@ export LocalBase,
        localairtable,
        uids
 
+# records
+export resolve_links
+
 # files
 export get_analysis_files
 
