@@ -69,7 +69,7 @@ transform!(sample_groups, "sample"=> ByRow(s-> startswith(s, "SEQ")) => "is_seqr
 
 #-
 
-transform!(sample_groups, "sample"=> (s-> haskey(base["Biospecimens"], first(s)) || haskey(base["Biospecimens"], replace(first(s), "_"=> "-", "-"=> "_")))=> "has_biospecimen")
+analysis_files.biospecimens = [rec[:uid] for rec in resolve_links(base, [seq[:biospecimen] for seq in base["SequencingPrep", analysis_files.sample]])]
 
 #-
 
@@ -128,34 +128,80 @@ transform!(completion,
 
 #-
 
-# ## Uploading records to Airtable
+transform!(sample_groups, AsTable(["file", "dir", "suffix"]) => ByRow(row-> begin
+    defline = first(eachline(joinpath(row.dir, row.file)))
+    m = match(r"mpa_v(\d+)_CHOCOPhlAn", defline)
+    if isnothing(m)
+        @warn "$(row.file) has no MP version: $defline"
+        return missing
+    else
+        return String(m[1])
+    end
+end) => "mpa_v")
 
-key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
-
-#-
-
-biosp_remote = AirTable("Biospecimens", VKCComputing.newbase)
-seqprep_remote = AirTable("SequencingPrep", VKCComputing.newbase)
-
-rename_targets = subset(analysis_files, "has_biospecimen"=> identity, "is_unique_swell"=> identity)
-transform!(rename_targets, "sample"=> ByRow(s -> begin
-    bsrec = base["Biospecimens", s]
-    (!haskey(bsrec, :seqprep) || length(bsrec[:seqprep]) > 2) ? missing : first(base[bsrec[:seqprep]])[:uid]
-end)=> "seqid")
-
-rename_targets[findall(==("KMZ43460"), rename_targets.sample), :seqid] .= "SEQ00211"
-
-biospecimens = base["Biospecimens"][rename_targets.sample]
-
-#-
-
-for row in eachrow(subset(rename_targets, "seqid"=> ByRow(!ismissing)))
-    oldpath = joinpath(row.dir, row.file)
-    newpath = joinpath(row.dir, replace(row.file, row.sample=> row.seqid))
-    @info "Renameing $oldpath to $newpath"
-    mv(oldpath, newpath)
+oldmetaphlan = let mpfiles = subset(analysis_files, "suffix"=> ByRow(==("profile.tsv")))
+    v30 = String[]
+    v31 = String[]
+    for f in eachrow(mpfiles)
+        defline = first(eachline(joinpath(f.dir, f.file)))
+        m = match(r"mpa_v(\d+)_CHOCOPhlAn", defline)
+        isnothing(m) && @warn "$(f.file) has no MP version: $defline"
+        m[1] == "30" && push!(v30, f.sample)        
+        m[1] == "31" && push!(v31, f.sample)  
+    end
+    @assert length([v30; v31]) == nrow(mpfiles) 
+    return v30
 end
 
-# ## Ambiguities
+seqrecs = base["SequencingPrep", oldmetaphlan]
+biosp = mapreduce(rec-> resolve_links(base, rec[:biospecimen]), vcat, seqrecs)
 
-CSV.write("/lovelace/sequencing/20230602_file_renaming.csv", rename_targets)
+df = DataFrame(seq           = [rec[:uid] for rec in seqrecs],
+                 s           = [rec[:S_well] for rec in seqrecs],
+                 biospecimen = [rec[:uid] for rec in biosp])
+
+remote_knead = let
+    awsknead = Iterators.filter(l-> contains(l, r"kneaddata_paired"), eachline("aws_processed.txt")) |> collect
+    DataFrame(mapreduce(vcat, eachindex(awsknead)) do i
+        m = match(r"([\w\-]+)_(S\d+)_kneaddata_paired", awsknead[i])
+        @assert !isnothing(m)
+        return [(; biospecimen = m[1], s = m[2], file = string(m[1], "_", m[2], "_kneaddata_paired_1.fastq.gz"))
+                (; biospecimen = m[1], s = m[2], file = string(m[1], "_", m[2], "_kneaddata_paired_2.fastq.gz"))]
+    end)
+end
+
+subset(remote_knead, "biospecimen"=> ByRow(b-> begin
+
+end))
+
+# # ## Uploading records to Airtable
+
+# key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
+
+# #-
+
+# biosp_remote = AirTable("Biospecimens", VKCComputing.newbase)
+# seqprep_remote = AirTable("SequencingPrep", VKCComputing.newbase)
+
+# rename_targets = subset(analysis_files, "has_biospecimen"=> identity, "is_unique_swell"=> identity)
+# transform!(rename_targets, "sample"=> ByRow(s -> begin
+#     bsrec = base["Biospecimens", s]
+#     (!haskey(bsrec, :seqprep) || length(bsrec[:seqprep]) > 2) ? missing : first(base[bsrec[:seqprep]])[:uid]
+# end)=> "seqid")
+
+# rename_targets[findall(==("KMZ43460"), rename_targets.sample), :seqid] .= "SEQ00211"
+
+# biospecimens = base["Biospecimens"][rename_targets.sample]
+
+# #-
+
+# for row in eachrow(subset(rename_targets, "seqid"=> ByRow(!ismissing)))
+#     oldpath = joinpath(row.dir, row.file)
+#     newpath = joinpath(row.dir, replace(row.file, row.sample=> row.seqid))
+#     @info "Renameing $oldpath to $newpath"
+#     mv(oldpath, newpath)
+# end
+
+# # ## Ambiguities
+
+# CSV.write("/lovelace/sequencing/20230602_file_renaming.csv", rename_targets)
