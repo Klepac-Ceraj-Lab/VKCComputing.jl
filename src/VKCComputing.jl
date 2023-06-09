@@ -6,6 +6,12 @@ export LocalBase,
        localairtable,
        uids
 
+# records
+export resolve_links
+
+# files
+export get_analysis_files
+
 using CSV
 using DataFrames
 using JSON3
@@ -21,8 +27,10 @@ using TestItems
 
 include("preferences.jl")
 include("airtable_interface.jl")
+include("record_ops.jl")
+include("file_interface.jl")
 
-@testitem "Placeholder" begin
+@testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
 end
 

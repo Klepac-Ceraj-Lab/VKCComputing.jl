@@ -119,11 +119,12 @@ function vkcairtable(name::String) #; olddb = false)
     if @has_preference("readonly_pat")
         pat = @load_preference("readonly_pat")
     elseif @has_preference("readwrite_pat")
-        pat = @load_preference("readonly_pat")
+        pat = @load_preference("readwrite_pat")
     else 
         pat = get(ENV, "AIRTABLE_KEY", nothing)
     end
-    isnothing(pat) && throw(ArgumentError("No airtable key available - set preference for 'readonly_pat' or 'readwrite_pat', or the environmental variable 'AIRTABLE_KEY'"))
+    isnothing(pat) && throw(ErrorException("No airtable key available - set preference for 'readonly_pat' or 'readwrite_pat', or the environmental variable 'AIRTABLE_KEY'"))
+    !(@has_preference "airtable_dir") && throw(ErrorException("Need `airtable_dir` preference set"))
     key = Airtable.Credential(pat)
     base = newbase # olddb ? oldbase : newbase
     return VKCAirtable(key, base, name,
@@ -156,12 +157,14 @@ Base.show(io::IO, tab::LocalAirtable) = print(io, "Airtable with name \"$(tab.ta
 Base.show(io::IO, base::LocalBase) = print(io, join(values(base.tableidx), '\n'))
 
 Base.haskey(base::LocalBase, k) = _isrecordhash(k) ? haskey(base.recordidx, k) : haskey(base.tableidx, k)
+Base.get(base::LocalBase, k, default) = haskey(base, k) ? getindex(base, k) : default
 
 Base.getindex(base::LocalBase, i) = _isrecordhash(i) ? base[base.recordidx[i]][i] : base.tableidx[i]
 Base.getindex(base::LocalBase, v::AbstractVector) = ThreadsX.map(i-> getindex(base, i), v)
 Base.getindex(base::LocalBase, i, j) = base[i][j]
 
 Base.haskey(tab::LocalAirtable, k) = _isrecordhash(k) ? haskey(tab.atid_idx, k) : haskey(tab.uid_idx, k)
+Base.get(tab::LocalAirtable, k, default) = haskey(tab, k) ? getindex(tab, k) : default
 
 Base.getindex(tab::LocalAirtable, i) = getindex(tab.data, i)
 Base.getindex(tab::LocalAirtable, i::String) = _isrecordhash(i) ? getindex(tab, tab.atid_idx[i]) : getindex(tab.data, tab.uid_idx[i])
