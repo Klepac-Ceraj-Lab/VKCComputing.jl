@@ -69,7 +69,7 @@ transform!(sample_groups, "sample"=> ByRow(s-> startswith(s, "SEQ")) => "is_seqr
 
 #-
 
-analysis_files.biospecimens = [rec[:uid] for rec in resolve_links(base, [seq[:biospecimen] for seq in base["SequencingPrep", analysis_files.sample]])]
+analysis_files.biospecimen = [rec[:uid] for rec in resolve_links(base, [seq[:biospecimen] for seq in base["SequencingPrep", analysis_files.sample]])]
 
 #-
 
@@ -129,6 +129,7 @@ transform!(completion,
 #-
 
 transform!(sample_groups, AsTable(["file", "dir", "suffix"]) => ByRow(row-> begin
+    row.suffix == "profile.tsv" || return missing
     defline = first(eachline(joinpath(row.dir, row.file)))
     m = match(r"mpa_v(\d+)_CHOCOPhlAn", defline)
     if isnothing(m)
@@ -139,26 +140,9 @@ transform!(sample_groups, AsTable(["file", "dir", "suffix"]) => ByRow(row-> begi
     end
 end) => "mpa_v")
 
-oldmetaphlan = let mpfiles = subset(analysis_files, "suffix"=> ByRow(==("profile.tsv")))
-    v30 = String[]
-    v31 = String[]
-    for f in eachrow(mpfiles)
-        defline = first(eachline(joinpath(f.dir, f.file)))
-        m = match(r"mpa_v(\d+)_CHOCOPhlAn", defline)
-        isnothing(m) && @warn "$(f.file) has no MP version: $defline"
-        m[1] == "30" && push!(v30, f.sample)        
-        m[1] == "31" && push!(v31, f.sample)  
-    end
-    @assert length([v30; v31]) == nrow(mpfiles) 
-    return v30
-end
+oldmetaphlan = subset(analysis_files, "mpa_v"=> ByRow(v-> !ismissing(v) && v == "30"))
+oldmp_biosp = Set(oldmetaphlan.biospecimen)
 
-seqrecs = base["SequencingPrep", oldmetaphlan]
-biosp = mapreduce(rec-> resolve_links(base, rec[:biospecimen]), vcat, seqrecs)
-
-df = DataFrame(seq           = [rec[:uid] for rec in seqrecs],
-                 s           = [rec[:S_well] for rec in seqrecs],
-                 biospecimen = [rec[:uid] for rec in biosp])
 
 remote_knead = let
     awsknead = Iterators.filter(l-> contains(l, r"kneaddata_paired"), eachline("aws_processed.txt")) |> collect
@@ -170,9 +154,25 @@ remote_knead = let
     end)
 end
 
-subset(remote_knead, "biospecimen"=> ByRow(b-> begin
+subset!(remote_knead, "biospecimen" => ByRow(b-> !isempty(Set([b, replace(b, "-"=>"_", "_"=>"-")]) ∩ oldmp_biosp)))
+subset!(remote_knead, "biospecimen" => ByRow(b-> !startswith(b, "FE")))
 
-end))
+leftjoin!(remote_knead, rename(unique(select(analysis_files, "biospecimen", "s_well", "sample")), "s_well"=> "s"); on=["biospecimen", "s"])
+subset!(remote_knead, "sample"=> ByRow(!ismissing))
+unique!(remote_knead, "file")
+
+transform!(remote_knead, AsTable(["biospecimen", "file", "sample"])=> ByRow(row-> begin
+    replace(row.file, row.biospecimen => row.sample)
+end) => "newfile")
+
+for row in eachrow(remote_knead[51:150, :])
+    cmd = Cmd(["aws", "s3", "cp",
+                joinpath("s3://vkc-sequencing/processed/mgx/kneaddata/", row.file),
+                joinpath("s3://vkc-nextflow/rawfastq/", row.newfile)]
+    )
+
+    run(cmd)
+end
 
 # # ## Uploading records to Airtable
 
