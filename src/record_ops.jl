@@ -42,6 +42,17 @@ function seqpreps(base::LocalBase, project)
     return df
 end
 
+function subjects(base::LocalBase, project)
+    proj = base["Projects", project]
+    subs = base[proj[:Subjects]]
+    df = DataFrame()
+    for rec in subs
+        push!(df, rec.fields; cols=:union)
+    end
+
+    return df
+end
+
 function _project_map(base::LocalBase)
     records = base["Projects", :]
 

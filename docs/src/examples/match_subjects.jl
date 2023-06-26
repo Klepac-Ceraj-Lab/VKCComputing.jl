@@ -12,6 +12,10 @@ tab = CSV.read("dima_ids.csv", DataFrame; stringtype=String)
 
 #-
 
-subject_recs = map(tab.ID) do id
-    get(base["Subjects"], string(["khula-", id]), missing)
-end
+subs = subjects(base, "khula")
+subs.stool .= true
+leftjoin!(tab, select(subs, "subject_id"=>"ID", "stool"=>"stool"); on = "ID")
+
+tab.stool = Int.(coalesce.(tab.stool, false))
+
+CSV.write("dima_with_stool.csv", tab)

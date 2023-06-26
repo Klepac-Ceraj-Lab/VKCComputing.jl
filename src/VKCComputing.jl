@@ -9,7 +9,8 @@ export LocalBase,
 # records
 export resolve_links,
        biospecimens,
-       seqpreps
+       seqpreps,
+       subjects
 
 # files
 export get_analysis_files,
