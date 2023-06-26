@@ -7,10 +7,13 @@ export LocalBase,
        uids
 
 # records
-export resolve_links
+export resolve_links,
+       biospecimens,
+       seqpreps
 
 # files
-export get_analysis_files
+export get_analysis_files,
+       audit_analysis_files
 
 using CSV
 using DataFrames

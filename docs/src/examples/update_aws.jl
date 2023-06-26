@@ -11,8 +11,28 @@ base = LocalBase(; update=true)
 
 #- 
 
-aws_processed = filter(f-> contains(f, r"processed/.+"), readlines("vkc-sequencing.txt"))
+aws_processed = filter(f-> contains(f, r"processed\/.+"), readlines("vkc-sequencing.txt"))
 aws_processed = map(f-> replace(f, r"^.+ (processed\/.+$)" => s"\1"), aws_processed)
+
+local_processed = DataFrame(file   = String[],
+    dir    = String[],
+    sample = Union{Missing, String}[],
+    s_well = Union{Missing, String}[],
+    suffix = Union{Missing, String}[]
+)
+
+
+for (dir, dirs, files) in walkdir(load_preference(VKCComputing, "mgx_analysis_dir"))
+    for file in files
+        m = match(r"^([\w\-]+)_(S\d+)_?(.+)", file)
+        if isnothing(m)
+            push!(local_processed, (; file, dir, sample = missing, s_well = missing, suffix = missing))
+        else
+            push!(local_processed, (; file, dir, sample = m[1], s_well = m[2], suffix = m[3]))
+        end
+    end
+end
+
 
 analysis_files = DataFrame(file   = String[],
                            dir    = String[],
@@ -76,7 +96,7 @@ transform!(analysis_files, AsTable(["sample", "file"]) => ByRow(row -> begin
     misrec = (;seqid = missing, remote_s = missing)
     s = row.sample
     ismissing(s) && return misrec
-    bsp = get(base["Biospecimens"], s, missing)
+    bsp = get(base["Biospecimens"], s, get(base["Biospecimens"], replace(s, "_"=>"-", "-"=>"_"), missing))
     ismissing(bsp) && return misrec
     !haskey(bsp, :seqprep) && return misrec
 
@@ -91,11 +111,35 @@ transform!(analysis_files, AsTable(["sample", "file"]) => ByRow(row -> begin
     return (; seqid, remote_s)
 end)=> ["seqid", "remote_s"])
 
-for row in eachrow(subset(analysis_files, "seqid" => ByRow(!ismissing))[3:end, :])
-    oldfile = joinpath("s3://vkc-sequencing", row.dir, row.file)
-    newfile = joinpath("s3://vkc-sequencing", row.dir, replace(row.file, row.sample => row.seqid))
-    @info "`$oldfile` => `$newfile`"
-    cmd = Cmd(["aws", "s3", "mv", oldfile, newfile])
+existing = Set(skipmissing(local_processed.file))
+
+#-
+
+for row in eachrow(subset(analysis_files, "seqid" => ByRow(!ismissing)))
+    newfile = replace(row.file, row.sample => row.seqid)
+
+    oldpath = joinpath("s3://vkc-sequencing", row.dir, row.file)
+    newpath = joinpath("s3://vkc-sequencing", row.dir, replace(row.file, row.sample => row.seqid))
+
+    if newfile ∈ existing
+        @info "removing `$oldpath`"
+        # cmd = Cmd(["aws", "s3", "rm", oldpath])
+    else
+        @info "`$oldpath` => `$newpath`"
+        cmd = Cmd(["aws", "s3", "mv", oldpath, newpath])
+        run(cmd)
+    end
+    
+end
+
+
+for row in eachrow(subset(other, "seqid" => ByRow(!ismissing)))
+    newfile = replace(row.file, row.sample => row.seqid)
+    newfile ∈ existing && continue
+    oldpath = joinpath("s3://vkc-sequencing", row.dir, row.file)
+    newpath = joinpath("s3://vkc-sequencing", row.dir, replace(row.file, row.sample => row.seqid))
+    
+    @info "`$oldpath` => `$newpath`"
+    cmd = Cmd(["aws", "s3", "mv", oldpath, newpath])
     run(cmd)
 end
-        
