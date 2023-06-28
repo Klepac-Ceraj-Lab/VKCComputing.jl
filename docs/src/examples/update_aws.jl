@@ -123,23 +123,12 @@ for row in eachrow(subset(analysis_files, "seqid" => ByRow(!ismissing)))
 
     if newfile ∈ existing
         @info "removing `$oldpath`"
-        # cmd = Cmd(["aws", "s3", "rm", oldpath])
+        cmd = Cmd(["aws", "s3", "rm", oldpath])
+        run(cmd)
     else
         @info "`$oldpath` => `$newpath`"
-        cmd = Cmd(["aws", "s3", "mv", oldpath, newpath])
-        run(cmd)
+        # cmd = Cmd(["aws", "s3", "mv", oldpath, newpath])
     end
     
 end
 
-
-for row in eachrow(subset(other, "seqid" => ByRow(!ismissing)))
-    newfile = replace(row.file, row.sample => row.seqid)
-    newfile ∈ existing && continue
-    oldpath = joinpath("s3://vkc-sequencing", row.dir, row.file)
-    newpath = joinpath("s3://vkc-sequencing", row.dir, replace(row.file, row.sample => row.seqid))
-    
-    @info "`$oldpath` => `$newpath`"
-    cmd = Cmd(["aws", "s3", "mv", oldpath, newpath])
-    run(cmd)
-end
