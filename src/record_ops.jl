@@ -84,13 +84,15 @@ function resolve_links(base::LocalBase, col; strict = true, unpack = r-> ismissi
 end
 
 """
-    biospecimens(base::LocalBase, project)
+    biospecimens([base::LocalBase, ]project; strict=true)
 
 Get all records from the table `Biospecimens` belonging to `project`.
 
-
+NOTE: `strict` is set to false by default,
+and will exclude any records where `keep != 1`.
 """
 function biospecimens(base::LocalBase, project; strict=true)
+    _check_project(base, project) # throws error if bad key
     proj = base["Projects", project]
     subs = base[proj[:Subjects]]
     df = DataFrame()
@@ -102,13 +104,24 @@ function biospecimens(base::LocalBase, project; strict=true)
     return df
 end
 
+biospecimens(project; strict=true) = biospecimens(LocalBase(), project; strict)
+
+"""
+    seqpreps([base::LocalBase, ]project; strict=true)
+
+Get all records from the table `SequencingPrep` belonging to `project`.
+
+NOTE: `strict` is set to false by default,
+and will exclude any records where `keep != 1`.
+"""
 function seqpreps(base::LocalBase, project; strict=true)
+    _check_project(base, project) # throws error if bad key
     biosp = biospecimens(base, project; strict)
     df = DataFrame()
     for row in eachrow(biosp)
         if !ismissing(row.seqprep)
             for seq in row.seqprep
-                (strict && seq[:keep] == 0) && continue
+                (strict && base[seq][:keep] == 0) && continue
                 push!(df, (; base[seq].fields..., biospecimen = row.uid); cols=:union)
             end
         end
@@ -116,7 +129,18 @@ function seqpreps(base::LocalBase, project; strict=true)
     return df
 end
 
-function subjects(base::LocalBase, project; strict = true)
+seqpreps(project; strict=true) = seqpreps(LocalBase(), project; strict)
+
+"""
+    subjects([base::LocalBase, ]project; strict=true)
+
+Get all records from the table `Subjects` belonging to `project`.
+
+NOTE: `strict` is set to false by default,
+and will exclude any records where `keep != 1`.
+"""
+function subjects(base::LocalBase, project; strict=true)
+    _check_project(base, project) # throws error if bad key
     proj = base["Projects", project]
     subs = base[proj[:Subjects]]
     df = DataFrame()
@@ -128,7 +152,19 @@ function subjects(base::LocalBase, project; strict = true)
     return df
 end
 
+subjects(project; strict=true) = subjects(LocalBase(), project; strict)
+
 function _project_map(base::LocalBase)
     records = base["Projects", :]
+    return [(; uid = proj[:uid], airtable_id = proj.id) for proj in records]
+end
 
+function _check_project(base, project) 
+    uids = (p[:uid] for p in _project_map(base))
+    project ∈ uids || throw(
+    ArgumentError("""
+        \"$project\" is not a valid project. Possible options are $(
+            join(["\"$p\"" for p in uids], ", ")
+        )""")
+    )
 end
