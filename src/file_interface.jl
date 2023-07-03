@@ -134,6 +134,51 @@ function compare_remote_local(remote_seq, local_seq; update_remote=false)
 end
 
 
+function audit_update_remote!(remote_seq, local_seq)
+    rem = select(remote_seq, "id", "uid", "S_well", "kneaddata", "metaphlan", "humann")
+    loc = select(local_seq, "sample"=>"uid", "s_well"=>"S_well", "kneaddata_complete", "metaphlan_complete", "humann_complete")
+
+    grem = groupby(rem, "uid") # group
+    gloc = groupby(loc, "uid") # group
+
+    patches = AirRecord[]
+    for key in keys(gloc)
+        key = NamedTuple(key)
+        !haskey(grem, key) && throw(ErrorException("Airtable SequencingPrep table does not contain key $key"))
+        dfrem = grem[key]
+        dfloc = gloc[key]
+        any(df-> size(df, 1) != 1, [dfrem, dfloc]) && throw(ErrorException("Key $key has multiple entries in one of the dataframes"))
+
+        rrem = dfrem[1,:]
+        rloc = dfloc[1,:]
+
+        # check S well
+        !ismissing(rrem.S_well) && rrem.S_well != rloc.S_well && throw(ErrorException("Key $key has mismatch between local and remote S-well"))
+        S_well = rloc.S_well
+
+        kneaddata = rrem.kneaddata          || rloc.kneaddata_complete
+        kneaddata ⊻ rrem.kneaddata          && @info "planning to update $(key.uid) kneaddata -> true"
+        kneaddata ⊻ rloc.kneaddata_complete && @warn "$(key.uid) kneaddata is `true` on remote, but missing locally"
+
+        metaphlan = rrem.metaphlan          || rloc.metaphlan_complete
+        metaphlan ⊻ rrem.metaphlan          && @info "planning to update $(key.uid) metaphlan -> true"
+        metaphlan ⊻ rloc.metaphlan_complete && @warn "$(key.uid) metaphlan is `true` on remote, but missing locally"
+
+        humann    = rrem.humann             || rloc.humann_complete
+        humann    ⊻ rrem.humann             && @info "planning to update $(key.uid) humann -> true"
+        humann    ⊻ rloc.humann_complete    && @warn "$(key.uid) humann is `true` on remote, but missing locally"
+
+        (any([kneaddata, metaphlan, humann]) || ismissing(rrem.S_well)) && push!(patches, 
+                                                                            AirRecord(
+                                                                                rrem.id,
+                                                                                AirTable("SequencingPrep", newbase),
+                                                                                (; kneaddata, metaphlan, humann, S_well)
+                                                                                )
+                                                                            )
+    end
+    
+    Airtable.patch!(AirTable("SequencingPrep", newbase), patches)
+end
 
 
 const _good_suffices = (

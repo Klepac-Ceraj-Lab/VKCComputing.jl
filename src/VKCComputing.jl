@@ -14,7 +14,9 @@ export resolve_links,
 
 # files
 export get_analysis_files,
-       audit_analysis_files
+       audit_analysis_files,
+       compare_remote_local,
+       audit_report
 
 using CSV
 using DataFrames
