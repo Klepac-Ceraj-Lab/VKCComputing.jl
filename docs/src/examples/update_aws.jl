@@ -54,7 +54,7 @@ end
 
 
 
-problems = subset(analysis_files, "suffix" => ByRow(s-> !ismissing(s) && s ∉ (
+problems = subset(analysis_files, "suffix" => ByRow(s-> !ismissing(s) || s ∉ (
     "genefamilies.tsv",
     "pathabundance.tsv",
     "pathcoverage.tsv",

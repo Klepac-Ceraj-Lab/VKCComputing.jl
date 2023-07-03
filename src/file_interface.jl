@@ -1,9 +1,9 @@
 function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
     analysis_files = DataFrame(file   = String[],
-                           dir    = String[],
-                           sample = Union{Missing, String}[],
-                           s_well = Union{Missing, String}[],
-                           suffix = Union{Missing, String}[]
+                               dir    = String[],
+                               sample = Union{Missing, String}[],
+                               s_well = Union{Missing, String}[],
+                               suffix = Union{Missing, String}[]
     )
 
     for (root, dirs, files) in walkdir(dir)
@@ -19,12 +19,31 @@ function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
     return analysis_files
 end
 
-function audit_analysis_files(analysis_files)
+function audit_analysis_files(analysis_files; base = LocalBase())
+    remote_seq = DataFrame()
+    for seq in Iterators.filter(seq-> haskey(seq, :sequencing_batch), base["SequencingPrep"][:])
+        push!(remote_seq, (; id = seq.id, seq.fields...); cols=:union)
+    end
+    remote_seq.kneaddata = coalesce.(remote_seq.kneaddata, false)
+    remote_seq.metaphlan = coalesce.(remote_seq.metaphlan, false)
+    remote_seq.humann    = coalesce.(remote_seq.humann, false)
 
-    samples = @chain analysis_files begin
-        groupby("sample", )
-        transform("s_well" => (s-> length(unique(s)) != 1) => "s_well_ambiguity"; ungroup=false)
-        @aside any(combine(_, "s_well_ambiguity" => any => "s").s) && throw(ArgumentError("Some files had ambiguous wells"))
+    grp = groupby(analysis_files, "sample")
+
+    transform!(grp, "s_well" => (col-> length(unique(col)) != 1)                    => "s_well_ambiguity",
+                    "suffix" => ByRow(row-> ismissing(row) || row ∉ _good_suffices) => "bad_suffix",
+                    "sample" => ByRow(row-> ismissing(row) || row ∉ remote_seq.uid)  => "bad_uid"
+        ; ungroup=false)
+    
+    problem_files  = subset(analysis_files,
+        AsTable(["s_well_ambiguity", "bad_suffix", "bad_uid"])=> ByRow(row-> any(row))
+    )
+    good_files     = subset(analysis_files,
+        AsTable(["s_well_ambiguity", "bad_suffix", "bad_uid"])=> ByRow(row-> !any(row))
+    )
+
+    local_seq = @chain good_files begin
+        groupby("sample")
         combine(
             "s_well"=> (s-> first(s)) => "s_well",
             "suffix"=> (suffix-> "kneaddata.log" in suffix)     => "kneaddata_complete",
@@ -69,5 +88,88 @@ function audit_analysis_files(analysis_files)
         )
     end
     
-    return samples
+    return remote_seq, local_seq, good_files, problem_files
 end
+
+function audit_report(remote_seq, local_seq, good_files, problem_files)
+
+end
+
+function compare_remote_local(remote_seq, local_seq; update_remote=false)
+    @info """
+
+    # Local #
+        sequences (N): $(size(local_seq, 1))
+        kneaddata (N): $(count(local_seq.kneaddata_complete))
+        metaphlan (N): $(count(local_seq.metaphlan_complete))
+        humann    (N): $(count(local_seq.humann_complete))
+    # Remote #
+        sequences (N): $(size(remote_seq, 1))
+        kneaddata (N): $(count(remote_seq.kneaddata))
+        metaphlan (N): $(count(remote_seq.metaphlan))
+        humann    (N): $(count(remote_seq.humann))
+    """
+
+    all_seqids = union(remote_seq.uid, local_seq.sample)
+
+    local_kn = subset(local_seq, "kneaddata_complete"=> identity)
+    local_mp = subset(local_seq, "metaphlan_complete"=> identity)
+    local_hm = subset(local_seq, "humann_complete"=> identity)
+    remote_kn = subset(remote_seq, "kneaddata"=> identity)
+    remote_mp = subset(remote_seq, "metaphlan"=> identity)
+    remote_hm = subset(remote_seq, "humann"=> identity)
+
+    @info """
+
+    # Discrepancies #
+        * Local, not remote * 
+            kneaddata: $(length(setdiff(local_kn.sample, remote_kn.uid)))
+            metaphlan: $(length(setdiff(local_mp.sample, remote_mp.uid)))
+            kneaddata: $(length(setdiff(local_hm.sample, remote_hm.uid)))
+        * Remote, note local * 
+            kneaddata: $(length(setdiff(remote_kn.uid, local_kn.sample)))
+            metaphlan: $(length(setdiff(remote_mp.uid, local_mp.sample)))
+            kneaddata: $(length(setdiff(remote_hm.uid, local_hm.sample)))
+    """
+end
+
+
+
+
+const _good_suffices = (
+    "genefamilies.tsv",
+    "pathabundance.tsv",
+    "pathcoverage.tsv",
+    "ecs.tsv",
+    "kos.tsv",
+    "pfams.tsv",
+    "ecs_rename.tsv",
+    "kos_rename.tsv",
+    "pfams_rename.tsv",
+    "kneaddata.log",
+    "kneaddata.repeats.removed.1.fastq.gz",
+    "kneaddata.repeats.removed.2.fastq.gz",
+    "kneaddata.repeats.removed.unmatched.1.fastq.gz",
+    "kneaddata.repeats.removed.unmatched.2.fastq.gz",
+    "kneaddata.trimmed.1.fastq.gz",
+    "kneaddata.trimmed.2.fastq.gz",
+    "kneaddata.trimmed.single.1.fastq.gz",
+    "kneaddata.trimmed.single.2.fastq.gz",
+    "kneaddata_paired_1.fastq.gz",
+    "kneaddata_paired_2.fastq.gz",
+    "kneaddata_unmatched_1.fastq.gz",
+    "kneaddata_unmatched_2.fastq.gz",
+    "kneaddata_hg37dec_v0.1_bowtie2_paired_contam_1.fastq.gz",
+    "kneaddata_hg37dec_v0.1_bowtie2_paired_contam_2.fastq.gz",
+    "kneaddata_hg37dec_v0.1_bowtie2_unmatched_1_contam.fastq.gz",
+    "kneaddata_hg37dec_v0.1_bowtie2_unmatched_2_contam.fastq.gz",
+    "kneaddata_hg37_v0.1_bowtie2_paired_contam_1.fastq.gz",
+    "kneaddata_hg37_v0.1_bowtie2_paired_contam_2.fastq.gz",
+    "kneaddata_hg37_v0.1_bowtie2_unmatched_1_contam.fastq.gz",
+    "kneaddata_hg37_v0.1_bowtie2_unmatched_2_contam.fastq.gz",
+    ".log",
+    ".sam.bz2",
+    "bowtie2.tsv",
+    "profile.tsv",
+    ".sam",
+)
