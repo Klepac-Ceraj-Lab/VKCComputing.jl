@@ -11,88 +11,60 @@ base = LocalBase(; update=true)
 
 #- 
 
-aws_processed = filter(f-> contains(f, r"processed\/.+"), readlines("vkc-sequencing.txt"))
-aws_processed = map(f-> replace(f, r"^.+ (processed\/.+$)" => s"\1"), aws_processed)
-
-local_processed = DataFrame(file   = String[],
-    dir    = String[],
-    sample = Union{Missing, String}[],
-    s_well = Union{Missing, String}[],
-    suffix = Union{Missing, String}[]
+aws_processed = aws_ls()
+transform!(groupby(aws_processed, "seqprep"), 
+    "seqprep" => identity=> "sample",
+    "seqprep" => (seq -> begin
+        ismissing(seq)
+    end)
 )
 
+#-
 
-for (dir, dirs, files) in walkdir(load_preference(VKCComputing, "mgx_analysis_dir"))
-    for file in files
-        m = match(r"^([\w\-]+)_(S\d+)_?(.+)", file)
-        if isnothing(m)
-            push!(local_processed, (; file, dir, sample = missing, s_well = missing, suffix = missing))
-        else
-            push!(local_processed, (; file, dir, sample = m[1], s_well = m[2], suffix = m[3]))
-        end
-    end
-end
+local_processed = get_local_processed()
+
+local_problems = subset(local_processed, "suffix" => ByRow(s-> ismissing(s) || s ∉ VKCComputing._good_suffices))
+aws_problems = subset(aws_processed, "suffix" => ByRow(s-> ismissing(s) || s ∉ VKCComputing._good_suffices))
 
 
-analysis_files = DataFrame(file   = String[],
-                           dir    = String[],
-                           sample = Union{Missing, String}[],
-                           s_well = Union{Missing, String}[],
-                           suffix = Union{Missing, String}[]
+
+remote_seq, local_seq, good_files, problem_files = audit_analysis_files(local_processed; base)
+
+jointdf = leftjoin(
+    subset(select(remote_seq, 
+            "uid"=>"seqprep", "S_well", "kneaddata"=>"kneaddata_AT", "metaphlan"=>"metaphlan_AT", "humann"=>"humann_AT"),
+        AsTable(["seqprep", "S_well"]) => ByRow(row-> !any(ismissing, values(row)))),
+    subset(select(local_seq,
+            "sample"=>"seqprep", "S_well", "kneaddata_complete"=>"kneaddata_LOC", "metaphlan_complete"=>"metaphlan_LOC", "humann_complete"=>"humann_LOC"),
+        AsTable(["seqprep", "S_well"]) => ByRow(row-> !any(ismissing, values(row))));
+    on=["seqprep", "S_well"]
 )
 
-for file in aws_processed
-    dir = dirname(file)
-    file = basename(file)
-    m = match(r"^([\w\-]+)_(S\d+)_?(.+)", file)
-    if isnothing(m)
-        push!(analysis_files, (; file, dir, sample = missing, s_well = missing, suffix = missing))
-    else
-        push!(analysis_files, (; file, dir, sample = m[1], s_well = m[2], suffix = m[3]))
-    end
-end
+leftjoin!(jointdf,
+    subset(select(audit_tools(subset(aws_processed, "suffix"=> ByRow(!ismissing))), 
+            "seqprep", "S_well", "kneaddata_complete"=>"kneaddata_AWS", "metaphlan_complete"=>"metaphlan_AWS", "humann_complete"=>"humann_AWS"),
+        AsTable(["seqprep", "S_well"]) => ByRow(row-> !any(ismissing, values(row))));
+    on=["seqprep", "S_well"]
+)
+
+@info ptable2string(
+    subset(combine(jointdf, "seqprep"=> identity => "seqprep",
+                    AsTable(r"kneaddata|metaphlan|humann") => ByRow(row-> begin
+                        kd = [row.kneaddata_AT, row.kneaddata_LOC, row.kneaddata_AWS]
+                        mp = [row.metaphlan_AT, row.metaphlan_LOC, row.metaphlan_AWS]
+                        hm = [row.humann_AT, row.humann_LOC, row.humann_AWS]
+                        check_kneaddata = !(!any(kd) || all(kd))
+                        check_metaphlan = !(!any(mp) || all(mp))
+                        check_humann    = !(!any(hm) || all(hm))
+                    return (; check_kneaddata, check_metaphlan, check_humann)
+                end) => ["check_kneaddata", "check_metaphlan", "check_humann"]),
+            AsTable(r"check") => ByRow(any)
+    ); show_subheader = false
+)
+#-
 
 
-
-problems = subset(analysis_files, "suffix" => ByRow(s-> !ismissing(s) || s ∉ (
-    "genefamilies.tsv",
-    "pathabundance.tsv",
-    "pathcoverage.tsv",
-    "ecs.tsv",
-    "kos.tsv",
-    "pfams.tsv",
-    "ecs_rename.tsv",
-    "kos_rename.tsv",
-    "pfams_rename.tsv",
-    "kneaddata.log",
-    "kneaddata.repeats.removed.1.fastq.gz",
-    "kneaddata.repeats.removed.2.fastq.gz",
-    "kneaddata.repeats.removed.unmatched.1.fastq.gz",
-    "kneaddata.repeats.removed.unmatched.2.fastq.gz",
-    "kneaddata.trimmed.1.fastq.gz",
-    "kneaddata.trimmed.2.fastq.gz",
-    "kneaddata.trimmed.single.1.fastq.gz",
-    "kneaddata.trimmed.single.2.fastq.gz",
-    "kneaddata_paired_1.fastq.gz",
-    "kneaddata_paired_2.fastq.gz",
-    "kneaddata_unmatched_1.fastq.gz",
-    "kneaddata_unmatched_2.fastq.gz",
-    "kneaddata_hg37dec_v0.1_bowtie2_paired_contam_1.fastq.gz",
-    "kneaddata_hg37dec_v0.1_bowtie2_paired_contam_2.fastq.gz",
-    "kneaddata_hg37dec_v0.1_bowtie2_unmatched_1_contam.fastq.gz",
-    "kneaddata_hg37dec_v0.1_bowtie2_unmatched_2_contam.fastq.gz",
-    "kneaddata_hg37_v0.1_bowtie2_paired_contam_1.fastq.gz",
-    "kneaddata_hg37_v0.1_bowtie2_paired_contam_2.fastq.gz",
-    "kneaddata_hg37_v0.1_bowtie2_unmatched_1_contam.fastq.gz",
-    "kneaddata_hg37_v0.1_bowtie2_unmatched_2_contam.fastq.gz",
-    ".log",
-    ".sam.bz2",
-    "bowtie2.tsv",
-    "profile.tsv",
-    ".sam",
-)))
-
-transform!(analysis_files, AsTable(["sample", "file"]) => ByRow(row -> begin
+transform!(local_processed, AsTable(["sample", "file"]) => ByRow(row -> begin
     misrec = (;seqid = missing, remote_s = missing)
     s = row.sample
     ismissing(s) && return misrec
@@ -115,7 +87,7 @@ existing = Set(skipmissing(local_processed.file))
 
 #-
 
-for row in eachrow(subset(analysis_files, "seqid" => ByRow(!ismissing)))
+for row in eachrow(subset(local_processed, "seqid" => ByRow(!ismissing)))
     newfile = replace(row.file, row.sample => row.seqid)
 
     oldpath = joinpath("s3://vkc-sequencing", row.dir, row.file)

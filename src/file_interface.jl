@@ -42,10 +42,17 @@ function audit_analysis_files(analysis_files; base = LocalBase())
         AsTable(["s_well_ambiguity", "bad_suffix", "bad_uid"])=> ByRow(row-> !any(row))
     )
 
-    local_seq = @chain good_files begin
-        groupby("sample")
+    local_seq = audit_tools(rename(good_files, "s_well"=>"S_well"); group_col="sample")
+    
+    return remote_seq, local_seq, good_files, problem_files
+end
+
+
+function audit_tools(df::DataFrame; group_col="seqprep")
+    @chain df begin
+        groupby(group_col)
         combine(
-            "s_well"=> (s-> first(s)) => "s_well",
+            "S_well"=> (s-> first(s)) => "S_well",
             "suffix"=> (suffix-> "kneaddata.log" in suffix)     => "kneaddata_complete",
             "suffix"=> (suffix-> "profile.tsv" in suffix)       => "has_taxprofile",
             "suffix"=> (suffix-> "bowtie2.tsv" in suffix)       => "has_bowtie2",
@@ -87,51 +94,8 @@ function audit_analysis_files(analysis_files; base = LocalBase())
             ]) => ByRow(all) => "humann_complete"
         )
     end
-    
-    return remote_seq, local_seq, good_files, problem_files
 end
 
-function audit_report(remote_seq, local_seq, good_files, problem_files)
-
-end
-
-function compare_remote_local(remote_seq, local_seq; update_remote=false)
-    @info """|
-
-    # Local #
-        sequences (N): $(size(local_seq, 1))
-        kneaddata (N): $(count(local_seq.kneaddata_complete))
-        metaphlan (N): $(count(local_seq.metaphlan_complete))
-        humann    (N): $(count(local_seq.humann_complete))
-    # Remote #
-        sequences (N): $(size(remote_seq, 1))
-        kneaddata (N): $(count(remote_seq.kneaddata))
-        metaphlan (N): $(count(remote_seq.metaphlan))
-        humann    (N): $(count(remote_seq.humann))
-    """
-
-    all_seqids = union(remote_seq.uid, local_seq.sample)
-
-    local_kn = subset(local_seq, "kneaddata_complete"=> identity)
-    local_mp = subset(local_seq, "metaphlan_complete"=> identity)
-    local_hm = subset(local_seq, "humann_complete"=> identity)
-    remote_kn = subset(remote_seq, "kneaddata"=> identity)
-    remote_mp = subset(remote_seq, "metaphlan"=> identity)
-    remote_hm = subset(remote_seq, "humann"=> identity)
-
-    @info """|
-
-    # Discrepancies #
-    ## Local, not remote
-        kneaddata: $(length(setdiff(local_kn.sample, remote_kn.uid)))
-        metaphlan: $(length(setdiff(local_mp.sample, remote_mp.uid)))
-        kneaddata: $(length(setdiff(local_hm.sample, remote_hm.uid)))
-    ## Remote, not local
-        kneaddata: $(length(setdiff(remote_kn.uid, local_kn.sample)))
-        metaphlan: $(length(setdiff(remote_mp.uid, local_mp.sample)))
-        kneaddata: $(length(setdiff(remote_hm.uid, local_hm.sample)))
-    """
-end
 
 
 function audit_update_remote!(remote_seq, local_seq)
