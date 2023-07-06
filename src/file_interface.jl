@@ -96,7 +96,7 @@ function audit_report(remote_seq, local_seq, good_files, problem_files)
 end
 
 function compare_remote_local(remote_seq, local_seq; update_remote=false)
-    @info """
+    @info """|
 
     # Local #
         sequences (N): $(size(local_seq, 1))
@@ -119,17 +119,17 @@ function compare_remote_local(remote_seq, local_seq; update_remote=false)
     remote_mp = subset(remote_seq, "metaphlan"=> identity)
     remote_hm = subset(remote_seq, "humann"=> identity)
 
-    @info """
+    @info """|
 
     # Discrepancies #
-        * Local, not remote * 
-            kneaddata: $(length(setdiff(local_kn.sample, remote_kn.uid)))
-            metaphlan: $(length(setdiff(local_mp.sample, remote_mp.uid)))
-            kneaddata: $(length(setdiff(local_hm.sample, remote_hm.uid)))
-        * Remote, note local * 
-            kneaddata: $(length(setdiff(remote_kn.uid, local_kn.sample)))
-            metaphlan: $(length(setdiff(remote_mp.uid, local_mp.sample)))
-            kneaddata: $(length(setdiff(remote_hm.uid, local_hm.sample)))
+    ## Local, not remote
+        kneaddata: $(length(setdiff(local_kn.sample, remote_kn.uid)))
+        metaphlan: $(length(setdiff(local_mp.sample, remote_mp.uid)))
+        kneaddata: $(length(setdiff(local_hm.sample, remote_hm.uid)))
+    ## Remote, not local
+        kneaddata: $(length(setdiff(remote_kn.uid, local_kn.sample)))
+        metaphlan: $(length(setdiff(remote_mp.uid, local_mp.sample)))
+        kneaddata: $(length(setdiff(remote_hm.uid, local_hm.sample)))
     """
 end
 
