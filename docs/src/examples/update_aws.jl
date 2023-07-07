@@ -12,12 +12,24 @@ base = LocalBase(; update=true)
 #- 
 
 aws_processed = aws_ls()
-transform!(groupby(aws_processed, "seqprep"), 
-    "seqprep" => identity=> "sample",
-    "seqprep" => (seq -> begin
-        ismissing(seq)
-    end)
-)
+@chain aws_processed begin
+    subset!("seqprep"=> ByRow(!ismissing))
+    transform!(
+        "seqprep" => identity => "sample",
+        AsTable(["seqprep", "S_well"]) => ByRow(row -> begin
+            startswith(row.seqprep, "SEQ") && return row.seqprep
+            rec = get(base["Biospecimens"], String(row.seqprep), missing)
+            ismissing(rec) && return missing
+            !haskey(rec, :seqprep) && return missing
+
+            preps = base[rec[:seqprep]]
+            length(preps) == 1 && return first(preps)[:uid]
+            idx = findfirst(p-> p[:S_well] == row.S_well, preps)
+            isnothing(idx) && return missing
+            return preps[idx][:uid]
+        end) => "seqprep"
+    )
+end
 
 #-
 
