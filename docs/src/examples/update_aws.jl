@@ -33,11 +33,119 @@ end
 
 #-
 
+aws_oldnames = subset(
+    select(aws_processed, "sample", "seqprep", "S_well", "file", "dir", "path"),
+    "sample" => ByRow(s-> !startswith(s, "SEQ"))
+)
+
+
+#-
+
+aws_outputs = vcat(
+    aws_ls("s3://1kd-khula/output"),
+    aws_ls("s3://vkc-nextflow"),
+)
+    
+
+@chain aws_outputs begin
+    subset!("seqprep"=> ByRow(!ismissing))
+    transform!(
+        "seqprep" => identity => "sample",
+        AsTable(["seqprep", "S_well"]) => ByRow(row -> begin
+            startswith(row.seqprep, "SEQ") && return row.seqprep
+            rec = get(base["Biospecimens"], String(row.seqprep), missing)
+            ismissing(rec) && return missing
+            !haskey(rec, :seqprep) && return missing
+
+            preps = base[rec[:seqprep]]
+            length(preps) == 1 && return first(preps)[:uid]
+            idx = findfirst(p-> p[:S_well] == row.S_well, preps)
+            isnothing(idx) && return missing
+            return preps[idx][:uid]
+        end) => "seqprep"
+    )
+end
+
+aws_outputs_oldnames = subset(
+    select(aws_outputs, "sample", "seqprep", "S_well", "file", "dir", "path"),
+    "sample" => ByRow(s-> !startswith(s, "SEQ"))
+)
+
+
+#-
+
+let have_files = Set(filter(f-> startswith(f, "SEQ"), aws_processed.file))
+    for row in eachrow(aws_oldnames)
+        ismissing(row.seqprep) && continue
+        newfile = replace(row.file, row.sample => row.seqprep)
+        if newfile ∈ have_files
+            @info "`$newfile` already exists, skipping"
+        else
+            @warn "`$newfile` doesn't exist - renaming"
+            oldpath = row.path
+            newpath = joinpath(row.dir, newfile)
+            run(`aws s3 mv $oldpath $newpath`)
+        end
+    end
+end
+
+#-
+
+aws_outputs = vcat(
+    aws_ls("s3://1kd-khula/output"),
+    aws_ls("s3://vkc-nextflow"),
+)
+    
+
+@chain aws_outputs begin
+    subset!("seqprep"=> ByRow(!ismissing))
+    transform!(
+        "seqprep" => identity => "sample",
+        AsTable(["seqprep", "S_well"]) => ByRow(row -> begin
+            startswith(row.seqprep, "SEQ") && return row.seqprep
+            rec = get(base["Biospecimens"], String(row.seqprep), missing)
+            ismissing(rec) && return missing
+            !haskey(rec, :seqprep) && return missing
+
+            preps = base[rec[:seqprep]]
+            length(preps) == 1 && return first(preps)[:uid]
+            idx = findfirst(p-> p[:S_well] == row.S_well, preps)
+            isnothing(idx) && return missing
+            return preps[idx][:uid]
+        end) => "seqprep"
+    )
+end
+
+aws_outputs_oldnames = subset(
+    select(aws_outputs, "sample", "seqprep", "S_well", "file", "dir", "path"),
+    "sample" => ByRow(s-> !startswith(s, "SEQ"))
+)
+
+let have_files = Set(filter(f-> startswith(f, "SEQ"), aws_processed.file))
+    for row in eachrow(aws_outputs_oldnames)
+        ismissing(row.seqprep) && continue
+        newfile = replace(row.file, row.sample => row.seqprep)
+        if newfile ∈ have_files
+            # @info "`$newfile` already exists, skipping"
+        else
+            oldpath = row.path
+            newpath = joinpath(
+                replace(row.dir, r"s3://.+/output/" => "s3://vkc-sequencing/processed/mgx/")
+            )
+            @warn "`$newfile` doesn't exist - renaming to $newpath"
+            # run(`aws s3 mv $oldpath $newpath`)
+        end
+    end
+end
+
+
+#-
+
+
 local_processed = get_local_processed()
 
 local_problems = subset(local_processed, "suffix" => ByRow(s-> ismissing(s) || s ∉ VKCComputing._good_suffices))
 aws_problems = subset(aws_processed, "suffix" => ByRow(s-> ismissing(s) || s ∉ VKCComputing._good_suffices))
-
 
 
 remote_seq, local_seq, good_files, problem_files = audit_analysis_files(local_processed; base)
