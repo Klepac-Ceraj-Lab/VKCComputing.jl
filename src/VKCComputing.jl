@@ -14,7 +14,17 @@ export resolve_links,
 
 # files
 export get_analysis_files,
-       audit_analysis_files
+       audit_analysis_files,
+       audit_tools
+
+# reporting
+export compare_remote_local,
+       audit_report,
+       report_problems,
+       ptable2string
+
+# AWS
+export aws_ls
 
 using CSV
 using DataFrames
@@ -33,6 +43,8 @@ include("preferences.jl")
 include("airtable_interface.jl")
 include("record_ops.jl")
 include("file_interface.jl")
+include("aws.jl")
+include("reporting.jl")
 
 @testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
