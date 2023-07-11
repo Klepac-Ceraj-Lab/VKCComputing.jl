@@ -1,3 +1,22 @@
+"""
+    get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
+
+Expects the preference `mgx_analysis_dir` to be set -
+see [`set_default_preferences!`](@ref).
+
+Creates DataFrame  with the following headers:
+
+- `mod`: `DateTime` that the file was last modified
+- `size`: (`Int`) in bytes
+- `path`: full remote path (eg `/grace/sequencing/processed/mgx/metaphlan/SEQ9999_S42_profile.tsv`)
+- `dir`: Remote directory for file (eg `/grace/sequencing/processed/mgx/metaphlan/`), equivalent to `dirname(path)`
+- `file`: Remote file name (eg `SEQ9999_S42_profile.tsv`)
+- `seqprep`: For files that match `SEQ\\d+_S\\d+_.+`, the sequencing Prep ID (eg `SEQ9999`). Otherwise, `missing`.
+- `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
+- `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
+
+See also [`aws_ls`](@ref)
+"""
 function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
     analysis_files = DataFrame(file   = String[],
                                dir    = String[],
@@ -19,6 +38,11 @@ function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
     return analysis_files
 end
 
+"""
+    audit_analysis_files(analysis_files; base = LocalBase())
+
+WIP
+"""
 function audit_analysis_files(analysis_files; base = LocalBase())
     remote_seq = DataFrame()
     for seq in Iterators.filter(seq-> haskey(seq, :sequencing_batch), base["SequencingPrep"][:])
@@ -47,7 +71,11 @@ function audit_analysis_files(analysis_files; base = LocalBase())
     return remote_seq, local_seq, good_files, problem_files
 end
 
+"""
+    audit_tools(df::DataFrame; group_col="seqprep")
 
+WIP
+"""
 function audit_tools(df::DataFrame; group_col="seqprep")
     @chain df begin
         groupby(group_col)
@@ -97,7 +125,11 @@ function audit_tools(df::DataFrame; group_col="seqprep")
 end
 
 
+"""
+    audit_update_remote!(remote_seq, local_seq)
 
+WIP
+"""
 function audit_update_remote!(remote_seq, local_seq)
     rem = select(remote_seq, "id", "uid", "S_well", "kneaddata", "metaphlan", "humann")
     loc = select(local_seq, "sample"=>"uid", "s_well"=>"S_well", "kneaddata_complete", "metaphlan_complete", "humann_complete")

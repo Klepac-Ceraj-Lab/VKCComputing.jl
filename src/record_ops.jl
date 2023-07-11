@@ -1,5 +1,5 @@
 """
-    resolve_links!(base::LocalBase, col; strict = true, unpack = r-> r isa AbstractString ? identity : first)
+    resolve_links(base::LocalBase, col; strict = true, unpack = r-> r isa AbstractString ? identity : first)
 
 Resolves a vector of record hashes (or a vector of vectors of record hashes)
 into the `uid`s of the linked record.

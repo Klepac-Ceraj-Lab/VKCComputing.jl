@@ -1,8 +1,24 @@
-struct AWSRecords
-    df::DataFrame
-    keys::Dictionary
-end
+# struct AWSRecords
+#     df::DataFrame
+#     keys::Dictionary
+# end
 
+
+"""
+    aws_ls(path="s3://vkc-sequencing/processed/mgx/")
+
+Get a (recurssive) listing of files / dicrectories contained at `path`, 
+and return a `DataFrame` with the following headers:
+
+- `mod`: `DateTime` that the file was last modified
+- `size`: (`Int`) in bytes
+- `path`: full remote path (eg `s3://bucket-name/some/SEQ9999_S42_profile.tsv`)
+- `dir`: Remote directory for file (eg `s3://bucket-name/some/`), equivalent to `dirname(path)`
+- `file`: Remote file name (eg `SEQ9999_S42_profile.tsv`)
+- `seqprep`: For files that match `SEQ\\d+_S\\d+_.+`, the sequencing Prep ID (eg `SEQ9999`). Otherwise, `missing`.
+- `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
+- `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
+"""
 function aws_ls(path="s3://vkc-sequencing/processed/mgx/")
     path_parts = splitpath(path)
     (first(path_parts) == "s3:" && length(path_parts) > 1) || error("Not a valid s3 path: $path")
@@ -42,8 +58,3 @@ function aws_ls(path="s3://vkc-sequencing/processed/mgx/")
     return df
 end
 
-function _remove_path_overlap(p1, p2)
-    p1parts = splitpath(p1)
-    p2parts = splitpath(p2)
-
-end

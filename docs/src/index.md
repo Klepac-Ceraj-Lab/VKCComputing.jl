@@ -26,5 +26,29 @@ VKCAirtable
 LocalAirtable
 LocalBase
 vkcairtable
+localairtable
+uids
 ```
 
+## Interacting with records
+
+```@docs
+resolve_links
+biospecimens
+seqpreps
+subjects
+```
+
+## Interacting with files
+
+```@docs
+get_analysis_files
+audit_analysis_files
+audit_tools
+```
+
+## Interacting with AWS
+
+```@docs
+aws_ls
+```

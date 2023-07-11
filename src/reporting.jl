@@ -11,6 +11,12 @@ function ptable2string(table; ptkwargs...)
     """
 end
 
+
+"""
+    report_problems(problem_files)
+
+WIP
+"""
 function report_problems(problem_files)
     problems = unique(problem_files.sample)
     @info "$(length(problems)) Problem IDs:"
@@ -21,6 +27,11 @@ function report_problems(problem_files)
     ); show_subheader=false)
 end
 
+"""
+    compare_remote_local(remote_seq, local_seq; update_remote=false)
+
+WIP
+"""
 function compare_remote_local(remote_seq, local_seq; update_remote=false)
     comp = DataFrame(
         thing  = ["sequences (N)", "kneaddata (N)", "metaphlan (N)", "humann    (N)"],

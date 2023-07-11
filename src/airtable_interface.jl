@@ -250,7 +250,7 @@ Airtable.query(tab::VKCAirtable) = Airtable.query(tab.key, tab)
 """
     nested_metadata(tab::VKCAirtable; update = Month(1))
 
-
+WIP
 """
 function nested_metadata(tab::VKCAirtable; update = Month(1))
     localfile = tab.localpath
