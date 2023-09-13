@@ -11,6 +11,7 @@ key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
 remote = AirBase("appmYwoXIHlen5s0q")
 base = LocalBase(; update=true)
 analysis_files = get_analysis_files()
+amzn_files = ""
 
 #-
 

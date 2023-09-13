@@ -1,4 +1,30 @@
 """
+    path2nt(path)
+
+Given a path with an `SEQ-` basename,
+generates a `NamedTuple` with the following keys:
+
+- `path`: full remote path (eg `/grace/sequencing/processed/mgx/metaphlan/SEQ9999_S42_profile.tsv`)
+- `dir`: Remote directory for file (eg `/grace/sequencing/processed/mgx/metaphlan/`), equivalent to `dirname(path)`
+- `file`: Remote file name (eg `SEQ9999_S42_profile.tsv`)
+- `seqprep`: For files that match `SEQ\\d+_S\\d+_.+`, the sequencing Prep ID (eg `SEQ9999`). Otherwise, `missing`.
+- `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
+- `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
+"""
+function path2nt(path)
+    dir = dirname(path)
+    file = basename(path)
+    m = match(r"^([\w\-]+)_(S\d+)_?(.+)", basename(path))
+    if isnothing(m)
+        (; path, file, dir, sample = missing, s_well = missing, suffix = missing)
+    else
+        (; path, file, dir, sample = m[1], s_well = m[2], suffix = m[3])
+    end
+end
+
+
+
+"""
     get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
 
 Expects the preference `mgx_analysis_dir` to be set -
@@ -6,35 +32,28 @@ see [`set_default_preferences!`](@ref).
 
 Creates DataFrame  with the following headers:
 
-- `mod`: `DateTime` that the file was last modified
-- `size`: (`Int`) in bytes
 - `path`: full remote path (eg `/grace/sequencing/processed/mgx/metaphlan/SEQ9999_S42_profile.tsv`)
 - `dir`: Remote directory for file (eg `/grace/sequencing/processed/mgx/metaphlan/`), equivalent to `dirname(path)`
 - `file`: Remote file name (eg `SEQ9999_S42_profile.tsv`)
 - `seqprep`: For files that match `SEQ\\d+_S\\d+_.+`, the sequencing Prep ID (eg `SEQ9999`). Otherwise, `missing`.
 - `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
 - `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
+- `mod`: `DateTime` that the file was last modified
+- `size`: (`Int`) in bytes
 
 See also [`aws_ls`](@ref)
 """
 function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
-    analysis_files = DataFrame(file   = String[],
-                               dir    = String[],
-                               sample = Union{Missing, String}[],
-                               s_well = Union{Missing, String}[],
-                               suffix = Union{Missing, String}[]
-    )
 
-    for (root, dirs, files) in walkdir(dir)
-        for f in files
-            m = match(r"^([\w\-]+)_(S\d+)_?(.+)", basename(f))
-            if isnothing(m)
-                push!(analysis_files, (; file = basename(f), dir = root, sample = missing, s_well = missing, suffix = missing))
-            else
-                push!(analysis_files, (; file = basename(f), dir = root, sample = m[1], s_well = m[2], suffix = m[3]))
-            end
-        end
-    end
+    analysis_files = DataFrame(
+        mapreduce(
+            ((root, dirs, files),)-> isempty(files) ? NamedTuple[] : path2nt.(joinpath.(root, files)),
+            vcat, walkdir(dir)
+        )
+    ) 
+
+    analysis_files.mod = unix2datetime.(mtime.(analysis_files.path))            
+    analysis_files.size = filesize.(analysis_files.path)
     return analysis_files
 end
 

@@ -19,14 +19,16 @@ and return a `DataFrame` with the following headers:
 - `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
 - `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
 """
-function aws_ls(path="s3://vkc-sequencing/processed/mgx/")
+function aws_ls(path="s3://vkc-sequencing/processed/mgx/"; profile=nothing)
     path_parts = splitpath(path)
     (first(path_parts) == "s3:" && length(path_parts) > 1) || error("Not a valid s3 path: $path")
     basepath = string("s3://", path_parts[2])
 
     io = IOBuffer()
     @info "Downloading file info from AWS: $path"
-    run(pipeline(`aws s3 ls --recursive $path`, io))
+    cmd = ["aws", "s3", "ls", "--recursive", path]
+    !isnothing(profile) && append!(cmd, ["--profile", profile])
+    run(pipeline(Cmd(cmd), io))
     seek(io, 0)
     @info "Building DataFrame"
     df = DataFrame(Iterators.map(eachline(io)) do line
@@ -44,16 +46,7 @@ function aws_ls(path="s3://vkc-sequencing/processed/mgx/")
     end)
 
     df = disallowmissing(df[completecases(df), :])
-
-    transform!(df,
-        "path" => ByRow(dirname) => "dir",
-        "path" => ByRow(basename) => "file",
-    )
-    transform!(df, "file" => ByRow(f-> begin
-        m = match(r"([\w\-]+)_(S\d{1,2})_?(.+)", f)
-        (seqprep, S_well, suffix) = isnothing(m) ? (missing, missing, missing) : m.captures
-        return (; seqprep, S_well, suffix)
-    end) => ["seqprep", "S_well", "suffix"])
+    df = hcat(DataFrame(path2nt.(df.path)), select(df, Not("path")))
 
     return df
 end
