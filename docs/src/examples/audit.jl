@@ -11,6 +11,7 @@ key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
 remote = AirBase("appmYwoXIHlen5s0q")
 base = LocalBase(; update=true)
 analysis_files = get_analysis_files()
+amzn_files = aws_ls(" s3://wc-vanja-klepac-ceraj/sequencing/processed/mgx/"; profile="wellesley")
 
 #-
 
@@ -30,3 +31,15 @@ report_problems(problem_files)
 #-
 
 compare_remote_local(remote_seq, local_seq)
+
+#-
+
+at_v_aws = leftjoin(remote_seq,
+                    select(subset(amzn_files, "suffix" => ByRow(==("profile.tsv"));
+                        skipmissing=true),
+                        "sample"=> "uid",
+                        "s_well"=>"aws_s");
+                    on="uid"
+)
+
+
