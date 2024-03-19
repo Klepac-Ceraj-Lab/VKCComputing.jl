@@ -29,7 +29,7 @@ julia> visits = [rec[:visit] for rec in base["Biospecimens"][["FG00004", "FG0000
   Airtable.AirRecord("recT1EUtiUSZaypxl", AirTable("Visits"), (uid = "ec02", Biospecimens = ["recmuwWA1bkhpxQ4P", #...
   Airtable.AirRecord("recyHSMZp0HLErHLz", AirTable("Visits"), (uid = "mc05", Biospecimens = ["recOlXNl7OMQH6cpF", #...
 
-julia> julia> seqpreps =  [rec[:seqprep] for rec in base["Biospecimens"][["FG00004", "FG00006", "FG00008"]]]
+julia> seqpreps =  [rec[:seqprep] for rec in base["Biospecimens"][["FG00004", "FG00006", "FG00008"]]]
 3-element Vector{JSON3.Array{String, Base.CodeUnits{UInt8, String}, SubArray{UInt64, 1, Vector{UInt64}, Tuple{UnitRange{Int64}}, true}}}:
  ["rec33GrUTnfeNTCXe", "recBh1xD1xOw4qkhO"]
  ["recq5fj9BQb7vugUd"]
@@ -96,7 +96,7 @@ function biospecimens(base::LocalBase, project; strict=true)
     proj = base["Projects", project]
     subs = base[proj[:Subjects]]
     df = DataFrame()
-    for rec in base[mapreduce(r-> r[:Biospecimens], vcat, subs)]
+    for rec in base[mapreduce(r-> r[:Biospecimens], vcat, Iterators.filter(s-> haskey(s, :Biospecimens), subs))]
         (strict && rec[:keep] == 0) && continue
         push!(df, rec.fields; cols=:union)
     end
@@ -105,6 +105,10 @@ function biospecimens(base::LocalBase, project; strict=true)
 end
 
 biospecimens(project; strict=true) = biospecimens(LocalBase(), project; strict)
+
+function biospecimens(base::LocalBase=LocalBase(); strict=true)
+    mapreduce(p-> biospecimens(base, p.fields[:uid]; strict), (df1, df2) -> vcat(df1, df2; cols=:union), base["Projects"][:])
+end
 
 """
     seqpreps([base::LocalBase, ]project; strict=true)
@@ -131,6 +135,10 @@ end
 
 seqpreps(project; strict=true) = seqpreps(LocalBase(), project; strict)
 
+function seqpreps(base::LocalBase=LocalBase(); strict=true)
+    mapreduce(p-> seqpreps(base, p.fields[:uid]; strict), (df1, df2) -> vcat(df1, df2; cols=:union), base["Projects"][:])
+end
+
 """
     subjects([base::LocalBase, ]project; strict=true)
 
@@ -153,6 +161,10 @@ function subjects(base::LocalBase, project; strict=true)
 end
 
 subjects(project; strict=true) = subjects(LocalBase(), project; strict)
+
+function subjects(base::LocalBase=LocalBase(); strict=true)
+    mapreduce(p-> subjects(base, p.fields[:uid]; strict), (df1, df2) -> vcat(df1, df2; cols=:union), base["Projects"][:])
+end
 
 function _project_map(base::LocalBase)
     records = base["Projects", :]
