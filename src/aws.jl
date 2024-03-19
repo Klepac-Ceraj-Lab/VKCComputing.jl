@@ -19,14 +19,19 @@ and return a `DataFrame` with the following headers:
 - `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
 - `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
 """
-function aws_ls(path="s3://vkc-sequencing/processed/mgx/")
+function aws_ls(path="s3://vkc-sequencing/processed/mgx/"; recurssive=true, kwargs...)
     path_parts = splitpath(path)
     (first(path_parts) == "s3:" && length(path_parts) > 1) || error("Not a valid s3 path: $path")
     basepath = string("s3://", path_parts[2])
 
     io = IOBuffer()
     @info "Downloading file info from AWS: $path"
-    run(pipeline(`aws s3 ls --recursive $path`, io))
+    run(pipeline(Cmd(
+            "aws", "s3", "ls", Iterators.flatten(
+                [(val isa Bool && val) ? (String(arg),) : (String(arg), string(val)) for (arg, val) in [[:recurssive=>recurssive]; kwargs...]]
+                 )...)
+        )
+    )
     seek(io, 0)
     @info "Building DataFrame"
     df = DataFrame(Iterators.map(eachline(io)) do line
