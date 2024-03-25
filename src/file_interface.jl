@@ -8,9 +8,9 @@ Creates DataFrame  with the following headers:
 
 - `mod`: `DateTime` that the file was last modified
 - `size`: (`Int`) in bytes
-- `path`: full remote path (eg `/grace/sequencing/processed/mgx/metaphlan/SEQ9999_S42_profile.tsv`)
-- `dir`: Remote directory for file (eg `/grace/sequencing/processed/mgx/metaphlan/`), equivalent to `dirname(path)`
-- `file`: Remote file name (eg `SEQ9999_S42_profile.tsv`)
+- `path`: full path (eg `/grace/sequencing/processed/mgx/metaphlan/SEQ9999_S42_profile.tsv`)
+- `dir`: Directory for file (eg `/grace/sequencing/processed/mgx/metaphlan/`), equivalent to `dirname(path)`
+- `file`: File name (eg `SEQ9999_S42_profile.tsv`)
 - `seqprep`: For files that match `SEQ\\d+_S\\d+_.+`, the sequencing Prep ID (eg `SEQ9999`). Otherwise, `missing`.
 - `S_well`: For files that match `SEQ\\d+_S\\d+_.+`, the well ID, including `S` (eg `S42`). Otherwise, `missing`.
 - `suffix`: For files that match `SEQ\\d+_S\\d+_.+`, the remainder of the file name, aside from a leading `_` (eg `profile.tsv`). Otherwise, `missing`.
@@ -18,20 +18,29 @@ Creates DataFrame  with the following headers:
 See also [`aws_ls`](@ref)
 """
 function get_analysis_files(dir = @load_preference("mgx_analysis_dir"))
-    analysis_files = DataFrame(file   = String[],
-                               dir    = String[],
-                               sample = Union{Missing, String}[],
-                               s_well = Union{Missing, String}[],
-                               suffix = Union{Missing, String}[]
+    analysis_files = DataFrame(mod     = ZonedDateTime[],
+                               size    = Int[],
+                               path    = String[],
+                               dir     = String[],
+                               file    = String[],
+                               seqprep = Union{Missing, String}[],
+                               s_well  = Union{Missing, String}[],
+                               suffix  = Union{Missing, String}[]
     )
 
     for (root, dirs, files) in walkdir(dir)
         for f in files
+            path = joinpath(root, f)
+            st = stat(path)
+            mod = astimezone(ZonedDateTime(Dates.unix2datetime(st.mtime), tz"UTC"), tz"America/New_York")
+            size = st.size
+            base_nt = (; mod, size, path, dir=root, file=f)
+
             m = match(r"^([\w\-]+)_(S\d+)_?(.+)", basename(f))
             if isnothing(m)
-                push!(analysis_files, (; file = basename(f), dir = root, sample = missing, s_well = missing, suffix = missing))
+                push!(analysis_files, (; base_nt..., seqprep = missing, s_well = missing, suffix = missing))
             else
-                push!(analysis_files, (; file = basename(f), dir = root, sample = m[1], s_well = m[2], suffix = m[3]))
+                push!(analysis_files, (; base_nt..., seqprep = m[1], s_well = m[2], suffix = m[3]))
             end
         end
     end
@@ -52,11 +61,11 @@ function audit_analysis_files(analysis_files; base = LocalBase())
     remote_seq.metaphlan = coalesce.(remote_seq.metaphlan, false)
     remote_seq.humann    = coalesce.(remote_seq.humann, false)
 
-    grp = groupby(analysis_files, "sample")
+    grp = groupby(analysis_files, "seqprep")
 
     transform!(grp, "s_well" => (col-> length(unique(col)) != 1)                    => "s_well_ambiguity",
                     "suffix" => ByRow(row-> ismissing(row) || row ∉ _good_suffices) => "bad_suffix",
-                    "sample" => ByRow(row-> ismissing(row) || row ∉ remote_seq.uid)  => "bad_uid"
+                    "seqprep" => ByRow(row-> ismissing(row) || row ∉ remote_seq.uid)  => "bad_uid"
         ; ungroup=false)
     
     problem_files  = subset(analysis_files,
@@ -66,7 +75,7 @@ function audit_analysis_files(analysis_files; base = LocalBase())
         AsTable(["s_well_ambiguity", "bad_suffix", "bad_uid"])=> ByRow(row-> !any(row))
     )
 
-    local_seq = audit_tools(rename(good_files, "s_well"=>"S_well"); group_col="sample")
+    local_seq = audit_tools(rename(good_files, "s_well"=>"S_well"); group_col="seqprep")
     
     return remote_seq, local_seq, good_files, problem_files
 end
@@ -130,9 +139,16 @@ end
 
 WIP
 """
-function audit_update_remote!(remote_seq, local_seq)
+function audit_update_remote!(remote_seq, local_seq; dryrun=true)
+    if @has_preference("readwrite_pat")
+        pat = @load_preference("readwrite_pat")
+    else 
+        pat = get(ENV, "AIRTABLE_KEY", nothing)
+    end
+    isnothing(pat) && throw(ErrorException("No airtable key available - set preference for 'readonly_pat' or 'readwrite_pat', or the environmental variable 'AIRTABLE_KEY'"))
+    cred = Airtable.Credential(pat)
     rem = select(remote_seq, "id", "uid", "S_well", "kneaddata", "metaphlan", "humann")
-    loc = select(local_seq, "sample"=>"uid", "s_well"=>"S_well", "kneaddata_complete", "metaphlan_complete", "humann_complete")
+    loc = select(local_seq, "seqprep"=>"uid", "s_well"=>"S_well", "kneaddata_complete", "metaphlan_complete", "humann_complete")
 
     grem = groupby(rem, "uid") # group
     gloc = groupby(loc, "uid") # group
@@ -173,7 +189,11 @@ function audit_update_remote!(remote_seq, local_seq)
                                                                             )
     end
     
-    Airtable.patch!(AirTable("SequencingPrep", newbase), patches)
+    if dryrun
+        @warn "Dry-run complete! Use `; dryrun=false` to update"
+    else
+        Airtable.patch!(cred, AirTable("SequencingPrep", AirBase("appmYwoXIHlen5s0q")), patches)
+    end
 end
 
 
