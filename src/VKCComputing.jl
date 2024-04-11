@@ -23,6 +23,12 @@ export compare_remote_local,
        report_problems,
        ptable2string
 
+# sample handling
+export ECHOVisitID,
+       subjectid,
+       timepointid,
+       visitmetadata
+
 # AWS
 export aws_ls
 
@@ -45,6 +51,7 @@ include("record_ops.jl")
 include("file_interface.jl")
 include("aws.jl")
 include("reporting.jl")
+include("samples.jl")
 
 @testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true
