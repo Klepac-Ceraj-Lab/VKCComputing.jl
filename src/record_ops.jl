@@ -94,6 +94,7 @@ and will exclude any records where `keep != 1`.
 function biospecimens(base::LocalBase, project; strict=true)
     _check_project(base, project) # throws error if bad key
     proj = base["Projects", project]
+    haskey(proj, :Subjects) || return DataFrame()
     subs = base[proj[:Subjects]]
     df = DataFrame()
     for rec in base[mapreduce(r-> r[:Biospecimens], vcat, Iterators.filter(s-> haskey(s, :Biospecimens), subs))]
@@ -107,7 +108,9 @@ end
 biospecimens(project; strict=true) = biospecimens(LocalBase(), project; strict)
 
 function biospecimens(base::LocalBase=LocalBase(); strict=true)
-    mapreduce(p-> biospecimens(base, p.fields[:uid]; strict), (df1, df2) -> vcat(df1, df2; cols=:union), base["Projects"][:])
+    mapreduce((df1, df2) -> vcat(df1, df2; cols=:union), base["Projects"][:]) do p
+        biospecimens(base, p.fields[:uid]; strict)
+    end
 end
 
 """
