@@ -1,8 +1,7 @@
-using Base: need_full_hex
-
 using VKCComputing
 using Chain
 using DataFrames
+using CSV
 using Airtable
 using Preferences
 using MiniLoggers
@@ -124,7 +123,7 @@ CSV.write("/home/kevin/Downloads/hopper_audit_files.csv", sort(maybeseq, "sample
 
 key = Airtable.Credential(load_preference(VKCComputing, "readwrite_pat"))
 remote = AirBase("appmYwoXIHlen5s0q")
-base = LocalBase(; update=true)
+base = LocalBase()
 analysis_files = get_analysis_files()
 
 #-
@@ -167,3 +166,45 @@ CSV.write(
     "/home/kevin/Downloads/hopper_name_changes.csv",
     sort(subset(tofix, "seqid"=> ByRow(!ismissing)), "path")
 )
+
+
+#-
+
+local_seqids = subset(maybeseq, "seqid"=> ByRow(!ismissing))
+
+length(unique(local_seqids.seqid))
+
+#-
+
+missing_seqids = DataFrame(seqprep=String[],
+                           biosp=Union{Missing,String}[],
+                           seqbatch=Union{Missing,String}[])
+for seq in setdiff(uids(base["SequencingPrep"]), unique(local_seqids.seqid))
+    seqprep = base["SequencingPrep", seq]
+    biosp = get(seqprep, :biospecimen, missing)
+    !ismissing(biosp) && (biosp = base[only(biosp)][:uid])
+    seqbatch = get(seqprep, :sequencing_batch, missing)
+    !ismissing(seqbatch) && (seqbatch = only([rec[:uid] for rec in base[seqbatch]]))
+    push!(missing_seqids, (; seqprep=seqprep[:uid], biosp, seqbatch))
+end
+
+subset!(missing_seqids, "seqbatch"=> ByRow(batch -> !ismissing(batch) && !(batch ∈ ("mgx034", "rna035"))))
+
+#-
+
+check_outputs = groupby(subset(local_seqids, "seqid"=> ByRow(seqid-> begin
+    seqid ∉ missing_seqids.seqprep
+end)), "seqid")
+
+combine(check_outputs, "path"  => length=> "n_files",
+                              "drive" => (d-> length(unique(d))) => "n_drives",
+                              "path"  => (d-> length(unique(d))) => "n_paths"
+               )
+
+file_audit = combine(check_outputs, "file"=> (file-> begin
+    has_knead = any(f-> contains(f, "kneaddata_paired"), file)
+    has_mp = any(f-> contains(f, "_profile"), file)
+    has_human = any(f-> contains(f, "_genefamilies"), file)
+    flagged = !all([has_knead, has_mp, has_human])
+    return (; has_knead, has_mp, has_human, flagged)
+end) => ["has_knead", "has_mp", "has_human", "flagged"]
