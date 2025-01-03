@@ -32,6 +32,9 @@ export ECHOVisitID,
 # AWS
 export aws_ls
 
+# SRA
+
+
 using CSV
 using DataFrames
 using JSON3
@@ -52,6 +55,7 @@ include("file_interface.jl")
 include("aws.jl")
 include("reporting.jl")
 include("samples.jl")
+include("sra.jl")
 
 @testitem "Placeholder" tags = [:tag1, :tag2] begin
     @test true

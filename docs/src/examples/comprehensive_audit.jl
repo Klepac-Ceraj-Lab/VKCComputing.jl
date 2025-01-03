@@ -29,7 +29,7 @@ extensions = (
 kneaddata_patterns = (
     r"^(.+)_kneaddata\.log$",
     r"^(.+)_kneaddata_(.+)\.fastq\.gz$",
-    r"^(.+)_kneaddata\.(.+)\.fastq\.gz$",
+    r"^(.+)_kneaddata\.(.+\.)?fastq\.gz$",
 )
 
 metaphlan_patterns = (
@@ -50,22 +50,26 @@ humann_patterns = (
     r"^(.+)_pfams\.tsv$",
 )
 
+exclude_dirs = (
+    "/OSU_coassembly",
+    "/OSU_data",
+    "/pypoetry",
+    "/vkclab_globus_endpoint/",
+    "/.cargo",
+    "/.cmdstan/",
+    "/.nextflow",
+    "/.julia",
+    "/.vscode-server",
+    "/Software",
+)
 
-all_files = DataFrame()
+local_files = DataFrame()
 
 foreach(drives) do drive
     for (path, dirs, files) in walkdir(drive; onerror = e-> @warn e)
         for file in files
             any(ext-> endswith(file, ext), extensions) || continue
-            contains(path, "/OSU_coassembly/") && continue
-            contains(path, "/OSU_data/") && continue
-            contains(path, "/pypoetry/") && continue
-            contains(path, "/.cargo/") && continue
-            contains(path, "/.cmdstan/") && continue
-            contains(path, "/.julia/") && continue
-            contains(path, "/.vscode-server/") && continue
-            contains(path, "/Software/") && continue
-
+            any(dir-> contains(path, dir), exclude_dirs) && continue
 
             if any(pattern-> contains(file, pattern), kneaddata_patterns)
                 type = "kneaddata"
@@ -79,10 +83,12 @@ foreach(drives) do drive
                 type = "other"
             end
 
-            push!(all_files, (; type, drive, file, path))
+            push!(local_files, (; type, drive, file, path))
         end
     end
 end
+
+aws_files = aws_ls("s3://wc-vanja-klepac-ceraj"; profile="wellesley")
 
 CSV.write("/home/kevin/Downloads/hopper_audit_other_files.csv", subset(all_files, "type"=>ByRow(==("other"))))
 
@@ -110,7 +116,8 @@ end)=> ["seqid", "sampleid", "s_well"])
 
 transform!(maybeseq, "sampleid" => ByRow(
     sampleid-> contains(sampleid, r"^F[EG]\d+") ||
-               contains(sampleid, r"[CM]\d+[\-_]\d+[EF]")
+               contains(sampleid, r"[CM]\d+[\-_]\d+[EF]") ||
+               contains(sampleid, r"SRR\d+")
         ) => "need2fixID")
 
 CSV.write("/home/kevin/Downloads/hopper_audit_files.csv", sort(maybeseq, "sampleid"))
@@ -208,3 +215,9 @@ file_audit = combine(check_outputs, "file"=> (file-> begin
     flagged = !all([has_knead, has_mp, has_human])
     return (; has_knead, has_mp, has_human, flagged)
 end) => ["has_knead", "has_mp", "has_human", "flagged"]
+
+
+
+#-
+
+
