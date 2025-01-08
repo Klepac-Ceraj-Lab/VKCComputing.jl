@@ -1,3 +1,4 @@
+using Base: version_slug
 using VKCComputing
 using Chain
 using DataFrames
@@ -67,14 +68,24 @@ local_files = DataFrame()
 
 foreach(drives) do drive
     for (path, dirs, files) in walkdir(drive; onerror = e-> @warn e)
+        any(dir-> contains(path, dir), exclude_dirs) && continue
+
         for file in files
             any(ext-> endswith(file, ext), extensions) || continue
-            any(dir-> contains(path, dir), exclude_dirs) && continue
+            mpdb = nothing
+            nodbfile = file
 
             if any(pattern-> contains(file, pattern), kneaddata_patterns)
                 type = "kneaddata"
             elseif any(pattern-> contains(file, pattern), metaphlan_patterns)
                 type = "metaphlan"
+                m = match(r"^(.+?)_(mpa_v\w+)(_profile\.tsv|_bowtie2\.tsv|\.sam\.bz2)", file)
+                if isnothing(m)
+                    @warn "Metaphlan file `$file` in `$path` missing db version"
+                else
+                    (_, mpdb, _) = String.(m.captures)
+                    nodbfile = replace(file, string("_", mpdb) =>"")
+                end
             elseif any(pattern-> contains(file, pattern), humann_patterns)
                 type = "humann"
             elseif endswith(file, "fastq.gz")
@@ -83,16 +94,22 @@ foreach(drives) do drive
                 type = "other"
             end
 
-            push!(local_files, (; type, drive, file, path))
+            push!(local_files, (; type, drive, file, path, mpdb, nodbfile); promote=true)
         end
     end
 end
 
 aws_files = aws_ls("s3://wc-vanja-klepac-ceraj"; profile="wellesley")
 
+transform!(aws_files, ["seqprep", "file"] => ByRow((seqprep, file) -> begin
+    !ismissing(seqprep) && return seqprep
+    m = match(r"^SEQ\d+", file)
+    return isnothing(m) ? missing : String(m.match)
+end) => "seqprep")
+
 CSV.write("/home/kevin/Downloads/hopper_audit_other_files.csv", subset(all_files, "type"=>ByRow(==("other"))))
 
-maybeseq = subset(all_files, "type"=> ByRow(!=("other")))
+maybeseq = subset(local_files, "type"=> ByRow(!=("other")))
 
 transform!(maybeseq, "file"=> ByRow(file->begin
     seqmatch = match(r"^(SEQ\d+)_(S\d+)?", file)
@@ -100,7 +117,7 @@ transform!(maybeseq, "file"=> ByRow(file->begin
     
     sampleid = nothing
     if isnothing(s_well)
-        wellmatch = match(r"^(.+)_(S\d+)_", file)
+        wellmatch = match(r"^(.+)_(S\d+)_?", file)
         (sampleid, s_well) = isnothing(wellmatch) ? (nothing, nothing) : wellmatch.captures
     end
 
@@ -124,6 +141,7 @@ CSV.write("/home/kevin/Downloads/hopper_audit_files.csv", sort(maybeseq, "sample
 
 
 #-
+
 
 
 #-
@@ -214,10 +232,70 @@ file_audit = combine(check_outputs, "file"=> (file-> begin
     has_human = any(f-> contains(f, "_genefamilies"), file)
     flagged = !all([has_knead, has_mp, has_human])
     return (; has_knead, has_mp, has_human, flagged)
-end) => ["has_knead", "has_mp", "has_human", "flagged"]
+end) => ["has_knead", "has_mp", "has_human", "flagged"])
 
 
 
 #-
+#
+# # completed 2025-01-08
+# mp_files = subset(local_files, "type"=> ByRow(==("metaphlan")), "file"=>ByRow(f-> contains(f, "profile.tsv")))
+#
+#
+#
+#  with_logger(MiniLogger(; io="/home/kevin/Downloads/renaming_test.log")) do
+#      for row in eachrow(mp_files)
+#          oldpath = joinpath(row.path, row.file)
+#          !isfile(oldpath) && continue
+#          version_line = first(eachline(oldpath))
+#          if !startswith(version_line, "#mpa")
+#              @warn "`$(oldpath)` does not have version line"
+#          else
+#              dbversion = replace(version_line, r"^\#mpa(.+)$" => s"mpa\1")
+#              newpath = joinpath(row.path, replace(row.file, "profile.tsv"=> "$(dbversion)_profile.tsv"))
+#
+#              @info "renaming `$oldpath` to `$newpath`"
+#              !isfile(newpath) && mv(oldpath, newpath)
+#          end
+#      end
+#  end
+#
+#
+#- 
 
-
+# # Completed 2025-01-08
+# mp_files = subset(maybeseq, "type"=> ByRow(==("metaphlan")))
+# transform!(mp_files, "file"=> ByRow(file-> begin
+#     contains(file, "mpa_v") || return (; mpdb=missing, nodbfile = file)
+#     m = match(r"^(.+?)_(mpa_v\w+_)?(profile\.tsv|bowtie2\.tsv|\.sam\.bz2)", file)
+#     isnothing(m) && error("$file doesn't match")
+#     (pre, db, post) = m.captures
+#     isnothing(db) && return (; mpdb=missing, nodbfile = file)
+#     return (; mpdb = rstrip(db, '_'), nodbfile = string(pre, "_", post))
+#
+# end)=> ["mpdb", "nodbfile"])
+#
+# mp_groups = groupby(mp_files, ["path", "sampleid", "s_well"])
+# mp_groups = select(subset(mp_groups, "mpdb"=> (db-> any(!ismissing, db)); ungroup=false), "file", "path", "sampleid", "s_well", "mpdb", "nodbfile"; ungroup=false)
+#
+# for grp in mp_groups
+#     db = only(unique(skipmissing(grp.mpdb)))
+#     length(grp.file) > 3 && @warn grp.file
+#
+#     tochange = subset(grp, "mpdb"=> ByRow(ismissing))
+#     isempty(tochange) && continue
+#     for row in eachrow(tochange)
+#         m = match(r"^(.+?)_?(profile\.tsv|bowtie2\.tsv|\.sam(\.bz2)?)", row.file)
+#         isnothing(m) && error(row.file)
+#         (pre,post,_) = m.captures
+#         post == ".sam.bz2" || (post = string("_", post))
+#         new_file = string(pre, "_", db,post)
+#
+#         old_path = joinpath(row.path, row.file)
+#         new_path = joinpath(row.path, new_file)
+#         @info "renaming `$old_path` to `$new_path`"
+#
+#         !isfile(new_path) && mv(old_path, new_path)
+#     end
+#
+# end
