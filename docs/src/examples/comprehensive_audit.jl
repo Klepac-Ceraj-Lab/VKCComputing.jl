@@ -107,7 +107,7 @@ transform!(aws_files, ["seqprep", "file"] => ByRow((seqprep, file) -> begin
     return isnothing(m) ? missing : String(m.match)
 end) => "seqprep")
 
-CSV.write("/home/kevin/Downloads/hopper_audit_other_files.csv", subset(all_files, "type"=>ByRow(==("other"))))
+CSV.write("/home/kevin/Downloads/hopper_audit_other_files.csv", subset(local_files, "type"=>ByRow(==("other"))))
 
 maybeseq = subset(local_files, "type"=> ByRow(!=("other")))
 
@@ -142,7 +142,9 @@ CSV.write("/home/kevin/Downloads/hopper_audit_files.csv", sort(maybeseq, "sample
 
 #-
 
-
+local_seq = subset(maybeseq, "seqid" => ByRow(!ismissing))
+aws_seq = subset(select(aws_files, "seqprep"=>"seqid", "file"=> "nodbfile", "dir"=>"aws_path", "S_well"=>"s_well"), "seqid" => ByRow(!ismissing))
+sort(subset(groupby(aws_seq, "nodbfile"), "aws_path"=> (path-> length(path)> 1)), "no"
 
 #-
 
