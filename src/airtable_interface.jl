@@ -104,6 +104,9 @@ const _new_tables = (
     "Sites",
     "Subjects",
     "Visits",
+    "NCBI",
+    "Files",
+    "FileTypes"
 )
 
 
