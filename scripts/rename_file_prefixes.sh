@@ -130,7 +130,7 @@ while IFS=, read -r old_id new_id; do
   # 7a) Find and rename files containing old_id
   # --------------------------------------
   shopt -s nullglob
-  for file in "$DIR"/*"$old_id"*; do
+  for file in "$DIR"/*"$old_id"_S*; do
     # Ensure it is a regular file
     if [[ -f "$file" ]]; then
       # Construct new filename by replacing old_id with new_id
