@@ -29,6 +29,13 @@ export ECHOVisitID,
        timepointid,
        visitmetadata
 
+# biobakery
+export run_knead,
+       cat_kneads,
+       run_metaphlan,
+       run_humann_main,
+       run_humann_regroup_rename
+
 # AWS
 export aws_ls
 
@@ -40,13 +47,14 @@ using ThreadsX
 using Airtable
 using Preferences
 using Dates
+using ArgParse
 using TimeZones
 using Dictionaries
 using TestItems
 
-
 include("preferences.jl")
 include("airtable_interface.jl")
+include("biobakery_interface.jl")
 include("record_ops.jl")
 include("file_interface.jl")
 include("aws.jl")
