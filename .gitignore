@@ -6,3 +6,5 @@ LocalPreferences.toml
 .vscode
 *.csv
 *.txt
+**/attic
+**/logs
