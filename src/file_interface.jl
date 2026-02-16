@@ -234,3 +234,16 @@ const _good_suffices = (
     "profile.tsv",
     ".sam",
 )
+
+function append_file!(src::AbstractString, dest::AbstractString; bufsize::Int = 1 << 20)
+    open(dest, "a") do out
+        open(src, "r") do inp
+            buf = Vector{UInt8}(undef, bufsize)
+            while !eof(inp)
+                n = readbytes!(inp, buf)
+                write(out, view(buf, 1:n))
+            end
+        end
+    end
+    return nothing
+end
