@@ -1,5 +1,7 @@
 module BioBakery
 
+using Dates
+
 include("types.jl")
 export  RawSequenceInputs,
         KneadDataConfig,

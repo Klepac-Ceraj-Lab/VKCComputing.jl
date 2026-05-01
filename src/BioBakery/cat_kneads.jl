@@ -25,9 +25,11 @@ function cat_kneads(sample::AbstractString, knead_dir::AbstractString, metaphlan
         return catfile
     end
 
-    @info "Writing combined file to $catfile"
+    @info "Writing combined file to $catfile. Logging original files for debug: $(infiles)"
     cmd = Cmd(vcat(["cat"], infiles))
     run(pipeline(cmd; stdout = catfile))
+
+    @info "line count on $(catfile): $(run(pipeline(`zcat $catfile`, `wc -l`)))."
 
     return catfile
 end
