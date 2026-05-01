@@ -7,7 +7,11 @@ function fasterq_dump(
     isdir(rawfastq_dir) || mkpath(rawfastq_dir)
 
     found_files = filter(f-> contains(basename(f), sample), readdir(rawfastq_dir; join = true))
-    (length(found_files) > 0) && println("Found $(length(found_files)) mapping to sample ID")  
+
+    if (length(found_files) > 0)
+        println("Found $(length(found_files)) mapping to sample ID")  
+        return 0
+    end
 
     run(
         `$(cfg.fasterq_dump_execline) \

@@ -60,8 +60,6 @@ function run_kneaddata(
 
     isdir(knead_dir) || mkpath(knead_dir)
 
-
-
     inp = detect_raw_inputs(sample, rawfastq_dir)
 
     if has_pair(inp)
