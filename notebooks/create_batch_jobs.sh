@@ -4,6 +4,7 @@ SAMPLES="/home/gz101/Processing/samples.txt"
 SLURM_JOB_DIR="/home/gz101/Processing/slurm-jobs"
 VKCCOMPUTING_PROJECTHOME="/home/gz101/Repos/VKCComputing.jl"
 PROCESSING_SCRIPT="/home/gz101/Repos/VKCComputing.jl/notebooks/process_local.jl"
+PREFIX="/home/gz101"
 
 mkdir -p "$SLURM_JOB_DIR"
 
@@ -21,7 +22,7 @@ while IFS= read -r sample; do
 #SBATCH -e ${SLURM_JOB_DIR}/slurm.${sample}.%j.err
 
 echo "Starting TEST RUN"
-julia --project=${VKCCOMPUTING_PROJECTHOME} ${PROCESSING_SCRIPT} -s $sample
+julia --project=${VKCCOMPUTING_PROJECTHOME} ${PROCESSING_SCRIPT} -s $sample --prefix $PREFIX
 
 EOF
 
