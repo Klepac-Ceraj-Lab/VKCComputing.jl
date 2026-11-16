@@ -18,6 +18,7 @@ function fasterq_dump(
         $sample \
         -O $rawfastq_dir \
         $(cfg.split_strat) \
+        -t $(cfg.temp_dir) \
         -e $(cfg.n_threads)`
     )
 

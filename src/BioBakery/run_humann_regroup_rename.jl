@@ -2,14 +2,14 @@ function run_humann_regroup_rename(
     sample, 
     hm_mainout,
     humann_dir;
-    hm_vertag = "HM40",
+    hm_vertag = "HM40a",
     hm_regroup_execline = `docker run -it --user=1015 -v /Processing:/Processing -v /Databases:/Databases -v /vassar:/vassar -v /murray:/murray --rm ghcr.io/klepac-ceraj-lab/humann-4:latest humann_regroup_table`,
     hm_rename_execline = `docker run -it --user=1015 -v /Processing:/Processing -v /Databases:/Databases -v /vassar:/vassar -v /murray:/murray --rm ghcr.io/klepac-ceraj-lab/humann-4:latest humann_rename_table`,
     util_db_dir = "/Databases/humann4/full_mapping"
     )
 
-    regroup_humann_dir = joinpath(humann_dir, "regroup")
-    rename_humann_dir = joinpath(humann_dir, "rename")
+    regroup_humann_dir = joinpath(humann_dir, hm_vertag, "regroup")
+    rename_humann_dir = joinpath(humann_dir, hm_vertag, "rename")
 
     isdir(regroup_humann_dir) || mkpath(regroup_humann_dir)
     isdir(rename_humann_dir) || mkpath(rename_humann_dir)

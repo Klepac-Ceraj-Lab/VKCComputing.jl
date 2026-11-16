@@ -1,4 +1,4 @@
-function detect_raw_inputs(sample::AbstractString, rawfastq_dir::AbstractString)::RawSequenceInputs
+function detect_raw_inputs(sample::AbstractString, rawfastq_dir::AbstractString, cfg::KneadDataConfig)::RawSequenceInputs
     files = readdir(rawfastq_dir; join=true)
 
     candidates = filter(f ->
@@ -7,15 +7,17 @@ function detect_raw_inputs(sample::AbstractString, rawfastq_dir::AbstractString)
         files
     )
 
-    # # SRA-style
-    # r1_pat = Regex("^" * sample * raw"_1\.(fastq|fq)(\.gz)?$", "i")
-    # r2_pat = Regex("^" * sample * raw"_2\.(fastq|fq)(\.gz)?$", "i")
-    # orphan_pat = Regex("^" * sample * raw"\.(fastq|fq)(\.gz)?$", "i")  # fasterq-dump-style
-
-    # IMR-style
-    r1_pat = Regex("^" * sample * raw"_.*R1.*\.(fastq|fq)(\.gz)?$", "i")
-    r2_pat = Regex("^" * sample * raw"_.*R2.*\.(fastq|fq)(\.gz)?$", "i")
-    orphan_pat = Regex("^" * sample * raw"_.*\.(fastq|fq)(\.gz)?$", "i")  # fasterq-dump-style
+    if (cfg.detect_style) == "SRA"
+        # SRA-style
+        r1_pat = Regex("^" * sample * raw"_1\.(fastq|fq)(\.gz)?$", "i")
+        r2_pat = Regex("^" * sample * raw"_2\.(fastq|fq)(\.gz)?$", "i")
+        orphan_pat = Regex("^" * sample * raw"\.(fastq|fq)(\.gz)?$", "i")  # fasterq-dump-style
+    else 
+        # IMR-style
+        r1_pat = Regex("^" * sample * raw"_.*R1.*\.(fastq|fq)(\.gz)?$", "i")
+        r2_pat = Regex("^" * sample * raw"_.*R2.*\.(fastq|fq)(\.gz)?$", "i")
+        orphan_pat = Regex("^" * sample * raw"_.*\.(fastq|fq)(\.gz)?$", "i")  # fasterq-dump-style
+    end
 
     r1s = filter(f -> occursin(r1_pat, basename(f)), candidates)
     r2s = filter(f -> occursin(r2_pat, basename(f)), candidates)

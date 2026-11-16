@@ -14,7 +14,8 @@ function _run_knead_paired(
         --threads $(cfg.n_threads) \
         --processes $(cfg.n_processes) \
         --output-prefix $prefix \
-        --trimmomatic $(cfg.trimmomatic_path)`)
+        --trimmomatic $(cfg.trimmomatic_path) \
+        --max-memory 4g`)
 end
 
 function _run_knead_single(
@@ -60,7 +61,7 @@ function run_kneaddata(
 
     isdir(knead_dir) || mkpath(knead_dir)
 
-    inp = detect_raw_inputs(sample, rawfastq_dir)
+    inp = detect_raw_inputs(sample, rawfastq_dir, cfg)
 
     if has_pair(inp)
         if isfile(joinpath(knead_dir, "$(canonical_prefix(sample)).log")) 

@@ -14,6 +14,7 @@ end
 
 Base.@kwdef struct PrefetchConfig
     fasterq_dump_execline::Cmd = `docker run -it --user=1015 -v /Processing:/Processing -v /Databases:/Databases -v /vassar:/vassar -v /murray:/murray --rm ghcr.io/klepac-ceraj-lab/bzip2:latest fasterq-dump`
+    temp_dir::String = "/screatch/gz101/"
     n_threads::Int = 10
     split_strat::String = "--split-3"
 end
@@ -24,6 +25,7 @@ Base.@kwdef struct KneadDataConfig
     n_threads::Int = 10
     n_processes::Int = 2
     trimmomatic_path::String = "/opt/conda/bin"
+    detect_style::String = "SRA"
 end
 
 has_pair(x::RawSequenceInputs) = (x.paired_r1 !== nothing) && (x.paired_r2 !== nothing)
